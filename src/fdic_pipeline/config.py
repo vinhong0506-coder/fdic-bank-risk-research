@@ -1,0 +1,15 @@
+from pathlib import Path
+
+BASE_URL = "https://api.fdic.gov/banks"
+START_DATE = "1984-03-31"
+END_DATE = "2026-06-30"
+PAGE_SIZE = 10_000
+OUT = Path("data_raw/fdic")
+FIN_FIELDS = [
+    "CERT", "REPDTE", "STNAME", "ASSET", "DEP", "DEPDOM", "EQ", "BRO", "CHBAL", "SC",
+    "LNLSGR", "LNLSNET", "LNRE", "LNCI", "LNCON", "LNATRES", "NCLNLS", "P3ASSET",
+    "P9ASSET", "NAASSET", "NTLNLS", "ORE", "NETINC", "INTINC", "EINTEXP", "NONII",
+    "NONIX", "ELNATR", "ROA", "ROE", "NIMY", "RBC1AAJ", "RBCRWAJ"
+]
+FAIL_FIELDS = ["CERT", "NAME", "CITYST", "FAILDATE", "FAILYR", "COST", "QBFASSET", "QBFDEP", "RESTYPE"]
+INST_FIELDS = ["CERT", "NAME", "STNAME", "BKCLASS", "ACTIVE", "ESTYMD", "ENDEFYMD", "CHANGEC1", "INSDATE"]
