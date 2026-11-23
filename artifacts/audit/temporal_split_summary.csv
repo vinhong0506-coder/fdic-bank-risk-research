@@ -1,4 +1,0 @@
-Split,Valid_Rows,Positive_Bank_Quarters (y=1),Unique_Failed_Banks,Failure_Rate_Pct
-Development (1984Q1-2007Q4),1224942,10153,2680,0.829
-Embargo Gap (2008Q1-2008Q4),33966,402,176,1.184
-Test Set (2009Q1-2025Q2),400698,1775,500,0.443

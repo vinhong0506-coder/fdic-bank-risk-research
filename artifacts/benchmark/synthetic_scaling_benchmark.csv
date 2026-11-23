@@ -1,5 +1,0 @@
-Scale,Rows,Parquet_MB,Polars_Runtime_s,Polars_Peak_RSS_MB,Polars_Throughput_rows_s,Spark_Local_Runtime_s,Spark_Throughput_rows_s,Polars_vs_Spark_Speedup
-1x (Real PIT Panel),1677107,47.9,0.326,650.8,5152237,4.73,354538,14.53x
-2x (Synthetic),3354214,95.7,0.675,956.0,4970831,0.489,6854651,0.73x
-5x (Synthetic),8385535,239.3,2.336,1980.4,3589561,0.52,16127216,0.22x
-10x (Synthetic),16771070,478.7,10.514,2874.9,1595090,0.89,18849204,0.08x
