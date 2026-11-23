@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 import os
 import time
 from pathlib import Path
@@ -37,7 +37,7 @@ def estimate_empirical_cost_ratio(raw_dir: Path, out_dir: Path) -> float:
         ])
         .filter(
             pl.col("CERT").is_not_null()
-            & (pl.col("fdate") <= "2007-12-31")
+            & (pl.col("fdate") <= "20071231")
             & pl.col("COST").is_not_null()
             & (pl.col("COST") >= 0)
             & pl.col("QBFASSET").is_not_null()
@@ -47,6 +47,7 @@ def estimate_empirical_cost_ratio(raw_dir: Path, out_dir: Path) -> float:
         .to_pandas()
     )
 
+    if df.empty: raise ValueError('No valid development failure losses; cannot estimate cost ratio')
     q25, med, q75 = np.percentile(df["loss_ratio"], [25, 50, 75])
     mean_val = float(df["loss_ratio"].mean())
     implied_ratio = round(float(med / 0.005), 1)
@@ -57,6 +58,7 @@ def estimate_empirical_cost_ratio(raw_dir: Path, out_dir: Path) -> float:
         "loss_ratio_mean": round(mean_val, 4),
         "loss_ratio_p75": round(float(q75), 4),
         "assumed_exam_cost_pct_asset": 0.005,
+        "cost_identification_note": "FDIC resolution loss measured; examination cost 0.5% of assets ASSUMED, not identified from FDIC",
         "empirical_cfn_cfp_ratio": implied_ratio,
     }])
     summary.to_csv(out_dir / "empirical_cost_estimation.csv", index=False)
@@ -79,7 +81,8 @@ def quarterly_recall_at_top_k(df_eval: pd.DataFrame, prob_col: str, k_pct: float
 
 
 def find_optimal_threshold(y_true: np.ndarray, y_prob: np.ndarray, cost_ratio: float) -> tuple[float, float]:
-    thresholds = np.linspace(0.002, 0.50, 250)
+    # Candidate cutoffs span observed Development OOF probabilities, plus never/always alert.
+    thresholds = np.unique(np.concatenate(([0.0], np.quantile(y_prob, np.linspace(0,1,501)), [1.0])))
     best_tau, best_cost = 0.05, float("inf")
     for tau in thresholds:
         pred = (y_prob >= tau).astype(int)
@@ -118,6 +121,9 @@ def run_spark_mllib_demo(features_parquet: Path, feature_cols: list[str], out_di
         train_sp = assembled.filter(F.col("split") == "DEV")
         test_sp = assembled.filter(F.col("split") == "TEST")
 
+        train_count = train_sp.count()
+        test_count = test_sp.count()
+
         lr_sp = SparkLR(featuresCol="features", labelCol="label", maxIter=25, regParam=0.01)
         model_sp = lr_sp.fit(train_sp)
         preds = model_sp.transform(test_sp)
@@ -132,8 +138,8 @@ def run_spark_mllib_demo(features_parquet: Path, feature_cols: list[str], out_di
 
         res = pd.DataFrame([{
             "Engine_Model": "PySpark MLlib LogisticRegression",
-            "Train_Rows": 1224942,
-            "Test_Rows": 400698,
+            "Train_Rows": train_count,
+            "Test_Rows": test_count,
             "Num_Features": len(feature_cols),
             "Test_PR_AUC": round(pr_auc, 4),
             "Test_ROC_AUC": round(roc_auc, 4),
@@ -153,18 +159,22 @@ def run_modeling_pipeline(pit_path: Path, raw_dir: Path, out_dir: Path) -> None:
 
     dev_df = raw_df[(raw_df["split"] == "DEV") & (raw_df["target_4q"].notna())].copy().reset_index(drop=True)
     test_df = raw_df[(raw_df["split"] == "TEST") & (raw_df["target_4q"].notna())].copy().reset_index(drop=True)
+    if (out_dir / "final_test_metrics.csv").exists():
+        raise RuntimeError("Test results already exist. Archive old artifacts and deliberately remove them before a NEW frozen final test. Do not iterate on test results.")
 
     # 1. Expanding-Window Time-Series Cross-Validation on Development
     folds = [
-        ("Fold 1 (Val: 1999-2002)", "19981231", "19990101", "20021231"),
-        ("Fold 2 (Val: 2003-2005)", "20021231", "20030101", "20051231"),
-        ("Fold 3 (Val: 2006-2007)", "20051231", "20060101", "20071231"),
+        ("Fold 1 (Val: 1999-2002)", "19971231", "19990101", "20021231"),
+        ("Fold 2 (Val: 2003-2005)", "20011231", "20030101", "20051231"),
+        ("Fold 3 (Val: 2006-2007)", "20041231", "20060101", "20071231"),
     ]
 
     cv_rows = []
     oof_preds = []
 
     for fold_name, tr_end, val_start, val_end in folds:
+        # Purged CV: four FULL calendar quarters between last train observation and val start.
+        assert (pd.Period(val_start[:4]+'Q'+str((int(val_start[4:6])-1)//3+1), freq='Q') - pd.Period(tr_end[:4]+'Q'+str((int(tr_end[4:6])-1)//3+1),freq='Q')).n >= 5
         tr = dev_df[dev_df["REPDTE"] <= tr_end]
         va = dev_df[(dev_df["REPDTE"] >= val_start) & (dev_df["REPDTE"] <= val_end)].copy()
 
@@ -213,7 +223,7 @@ def run_modeling_pipeline(pit_path: Path, raw_dir: Path, out_dir: Path) -> None:
     oof_all = pd.concat(oof_preds, ignore_index=True)
     scenarios = [
         ("Conservative (10:1)", 10.0),
-        (f"Empirical Base ({emp_ratio:.0f}:1)", emp_ratio),
+        (f"Loss-Informed Scenario ({emp_ratio:.0f}:1; assumed CFP)", emp_ratio),
         ("High Penalty (50:1)", 50.0),
     ]
     thresh_map = {}
@@ -222,6 +232,12 @@ def run_modeling_pipeline(pit_path: Path, raw_dir: Path, out_dir: Path) -> None:
         tau_lr, _ = find_optimal_threshold(oof_all["target_4q"].values, oof_all["prob_lr"].values, c_ratio)
         thresh_map[sc_name] = {"cost_ratio": c_ratio, "tau_lgb": tau_lgb, "tau_lr": tau_lr}
 
+    # Persist exact OOF threshold choices BEFORE touching test predictions.
+    import json
+    (out_dir / 'frozen_development_decisions.json').write_text(json.dumps({
+        'folds':folds, 'thresholds':thresh_map, 'feature_cols':feat_cols,
+        'assumed_exam_cost_asset_ratio':0.005, 'selection_source':'Development OOF only'
+    },indent=2),encoding='utf-8')
     # 2. Fit Frozen Final Models on Full Development -> Evaluate ONCE on Test (2009Q1-2025Q2)
     final_prep = LeakageSafePreprocessor(feat_cols).fit(dev_df[feat_cols])
     X_dev = final_prep.transform(dev_df[feat_cols])
@@ -319,7 +335,7 @@ def run_modeling_pipeline(pit_path: Path, raw_dir: Path, out_dir: Path) -> None:
         ("2015Q1-2022Q4 (Low-Failure Expansion)", "20150101", "20221231"),
         ("2023Q1-2025Q2 (Regional Bank Stress)", "20230101", "20250630"),
     ]
-    base_tau = thresh_map[f"Empirical Base ({emp_ratio:.0f}:1)"]["tau_lgb"]
+    base_tau = thresh_map[f"Loss-Informed Scenario ({emp_ratio:.0f}:1; assumed CFP)"]["tau_lgb"]
     reg_rows = []
     for r_name, r_start, r_end in regimes:
         sub = test_df[(test_df["REPDTE"] >= r_start) & (test_df["REPDTE"] <= r_end)]
@@ -340,6 +356,23 @@ def run_modeling_pipeline(pit_path: Path, raw_dir: Path, out_dir: Path) -> None:
         })
     reg_df = pd.DataFrame(reg_rows)
     reg_df.to_csv(out_dir / "test_regime_diagnostics.csv", index=False)
+    # Distinct failed CERTs summed across regimes may exceed global total if bank-quarter
+    # labels for the same failed CERT straddle two diagnostic regimes.
+    regime_note = {
+        'sum_regime_unique_failed_banks':int(reg_df['Unique_Failed_Banks'].sum()),
+        'global_test_unique_failed_banks':int(test_df.loc[test_df.target_4q==1,'CERT'].nunique()),
+        'counting_note':'Regime-level CERT counts are not additive across calendar boundaries.'}
+    (out_dir/'regime_nonadditivity.json').write_text(__import__('json').dumps(regime_note,indent=2))
+
+    # Sensitivity to avoidable share of the measured resolution loss.
+    med_loss = float(pd.read_csv(out_dir/'empirical_cost_estimation.csv').iloc[0]['loss_ratio_median'])
+    sensitivity=[]
+    for avoidable in (0.10,0.25,0.50,1.00):
+        for assumed_fp in (0.0025,0.005,0.01):
+            sensitivity.append({'avoidable_loss_fraction_assumed':avoidable,
+                                'exam_cost_as_fraction_assets_assumed':assumed_fp,
+                                'implied_CFN_to_CFP':med_loss*avoidable/assumed_fp})
+    pd.DataFrame(sensitivity).to_csv(out_dir/'cost_assumption_sensitivity.csv',index=False)
 
     test_df[["CERT", "REPDTE", "target_4q", "label_reason", "prob_lr", "prob_lgb"]].to_parquet(
         out_dir / "test_predictions.parquet", compression="zstd"

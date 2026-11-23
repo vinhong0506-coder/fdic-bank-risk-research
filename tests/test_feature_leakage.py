@@ -1,3 +1,5 @@
+import pytest
+pytest.importorskip("polars")
 import numpy as np
 import pandas as pd
 import polars as pl

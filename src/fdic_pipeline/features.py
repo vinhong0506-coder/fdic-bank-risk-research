@@ -6,7 +6,7 @@ import pandas as pd
 import polars as pl
 
 EXCLUDE_LEAKAGE_COLS = {
-    'CERT', 'REPDTE', 'STNAME', 'quarter_date', 'q_idx', 'horizon_end_date',
+    'CERT', 'REPDTE', 'STNAME', 'quarter_date', 'q_idx', 'horizon_end', 'horizon_end_date',
     'exit_type', 'failure_date', 'inst_end_date', 'confirmed_exit_date',
     'bkclass', 'est_date', 'target_4q', 'label_reason', 'split'
 }
@@ -65,8 +65,7 @@ def build_raw_camels_features(lf: pl.LazyFrame) -> pl.LazyFrame:
     # Ensure q_idx exists for strict calendar-quarter gap checks
     base = lf.sort(['CERT', 'quarter_date'])
     if 'q_idx' not in schema_cols:
-        q_dates = lf.select('quarter_date').unique().sort('quarter_date').with_row_index('q_idx').collect()
-        base = base.join(q_dates.lazy(), on='quarter_date', how='left')
+        base = base.with_columns((pl.col('quarter_date').dt.year()*4 + pl.col('quarter_date').dt.quarter() - 1).alias('q_idx'))
 
     exprs = [
         # C - Capital Adequacy
@@ -117,6 +116,7 @@ def build_raw_camels_features(lf: pl.LazyFrame) -> pl.LazyFrame:
     # Calendar-strict temporal lags and rolling volatility (within CERT only)
     q_gap_1 = (pl.col('q_idx') - pl.col('q_idx').shift(1).over('CERT')) == 1
     q_gap_4 = (pl.col('q_idx') - pl.col('q_idx').shift(4).over('CERT')) == 4
+    q_gap_3 = (pl.col('q_idx') - pl.col('q_idx').shift(3).over('CERT')) == 3
 
     step2 = step1.with_columns([
         pl.when(q_gap_1).then(pl.col('roa').shift(1).over('CERT')).otherwise(None).alias('roa_lag1'),
@@ -128,8 +128,8 @@ def build_raw_camels_features(lf: pl.LazyFrame) -> pl.LazyFrame:
         pl.when(q_gap_4 & (pl.col('ASSET').shift(4).over('CERT') > 0))
           .then(pl.col('ASSET') / pl.col('ASSET').shift(4).over('CERT') - 1.0)
           .otherwise(None).alias('asset_growth_yoy'),
-        pl.col('roa').rolling_std(window_size=4, min_periods=2).over('CERT').alias('roa_std_4q'),
-        pl.col('nimy').rolling_std(window_size=4, min_periods=2).over('CERT').alias('nimy_std_4q'),
+        pl.when(q_gap_3).then(pl.col('roa').rolling_std(window_size=4, min_periods=4, ddof=1).over('CERT')).otherwise(None).alias('roa_std_4q'),
+        pl.when(q_gap_3).then(pl.col('nimy').rolling_std(window_size=4, min_periods=4, ddof=1).over('CERT')).otherwise(None).alias('nimy_std_4q'),
     ])
 
     # Industry-quarter relative z-scores (strictly point-in-time within each REPDTE)
@@ -208,7 +208,9 @@ def build_feature_dataset(pit_path: Path, out_parquet: Path, feat_art_dir: Path)
         'liq_asset_ratio', 'liq_dep_ratio', 'ldr', 'brokered_dep_ratio', 'core_dep_ratio',
         'log_asset', 'asset_growth_qoq', 'asset_growth_yoy', 'cap_zscore_q', 'roa_zscore_q', 'npl_zscore_q'
     ]
-    feature_cols = [c for c in candidate_feats if c in raw_feat_df.columns]
+    feature_cols = [c for c in candidate_feats if c in raw_feat_df.columns and raw_feat_df[c].null_count() < raw_feat_df.height]
+    omitted = sorted(set(candidate_feats)-set(feature_cols))
+    (feat_art_dir/'omitted_all_missing_features.json').write_text(json.dumps(omitted,indent=2))
 
     pdf = raw_feat_df.select(meta_cols + feature_cols).to_pandas()
     dev_mask = (pdf['split'] == 'DEV') & (pdf['target_4q'].notna())

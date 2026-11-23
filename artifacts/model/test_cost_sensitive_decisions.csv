@@ -1,7 +1,0 @@
-Scenario,Model,Frozen_Tau,TP,FP,FN,Precision_Pct,Recall_BankQ_Pct,Unique_Banks_Captured,Alert_Rate_Pct,Expected_Cost_Units
-Conservative (10:1),Logistic Regression,0.39,781,230,994,77.25,44.0,394/500 (78.8%),0.25,10170.0
-Conservative (10:1),LightGBM,0.058,1509,2654,266,36.25,85.01,478/500 (95.6%),1.04,5314.0
-Empirical Base (40:1),Logistic Regression,0.106,1323,1250,452,51.42,74.54,461/500 (92.2%),0.64,19465.6
-Empirical Base (40:1),LightGBM,0.024,1622,4683,153,25.73,91.38,483/500 (96.6%),1.57,10848.9
-High Penalty (50:1),Logistic Regression,0.106,1323,1250,452,51.42,74.54,461/500 (92.2%),0.64,23850.0
-High Penalty (50:1),LightGBM,0.018,1647,5465,128,23.16,92.79,484/500 (96.8%),1.77,11865.0

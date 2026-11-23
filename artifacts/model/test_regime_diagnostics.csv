@@ -1,4 +1,0 @@
-Regime,Rows,Pos_BankQ,Unique_Failed_Banks,PR_AUC,ROC_AUC,Recall_Top5Pct_Q,Banks_Captured_BaseTau
-2009Q1-2014Q4 (GFC & Aftermath),178266,1646,468,0.6511,0.9901,0.9429,460/468
-2015Q1-2022Q4 (Low-Failure Expansion),176275,107,30,0.2418,0.9081,0.8037,23/30
-2023Q1-2025Q2 (Regional Bank Stress),46157,22,9,0.0896,0.9215,0.6818,4/9
