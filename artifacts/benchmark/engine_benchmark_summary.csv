@@ -1,0 +1,4 @@
+Engine,Rows,Median_Runtime_s,Min_Max_s,Peak_RSS_MB,Throughput_rows_s,Speedup_vs_Pandas,Equivalence
+Pandas (Baseline),1677107,4.777,3.19 - 6.98,1427.5,351074.0,1.00x,Reference
+Polars (Lazy API),1677107,0.322,0.32 - 0.43,784.8,5216472.0,14.86x,PASS (max_diff < 1e-6)
+PySpark (Local[*]),1677107,0.768,0.71 - 0.92,468.1,2182783.0,6.22x,PASS (max_diff=4.37e-12 < 1e-6)

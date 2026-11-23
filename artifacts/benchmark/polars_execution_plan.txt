@@ -1,0 +1,7 @@
+ WITH_COLUMNS:
+ [[([(col("cap_ratio")) - (col("cap_ratio").mean().over([col("REPDTE")]))]) / (col("cap_ratio").std().over([col("REPDTE")]))].alias("cap_zscore_pit")] 
+   WITH_COLUMNS:
+   [[(col("EQ")) / (col("ASSET"))].alias("cap_ratio"), [(col("LNLSNET")) / (col("ASSET"))].alias("loan_asset_ratio"), [([(col("CHBAL")) + (col("SC"))]) / (col("DEP"))].alias("liq_ratio"), [(col("LNATRES")) / (col("NCLNLS"))].alias("coverage_ratio"), [([(col("ASSET")) / (col("ASSET").shift([dyn int: 1]).over([col("CERT")]))]) - (1.0)].alias("asset_growth_qoq"), [([(col("ASSET")) / (col("ASSET").shift([dyn int: 4]).over([col("CERT")]))]) - (1.0)].alias("asset_growth_yoy"), col("ROA").rolling_std().over([col("CERT")]).alias("roa_vol_4q")] 
+    SORT BY [col("CERT"), col("quarter_date")]
+      Parquet SCAN [data_processed/panel_pit.parquet]
+      PROJECT 12/44 COLUMNS

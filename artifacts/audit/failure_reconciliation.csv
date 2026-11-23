@@ -1,0 +1,6 @@
+Category,Count
+Total rows in raw failures.parquet,4117
+Rows with null/unassigned CERT,488
+Duplicate failure records for same CERT,44
+Unique failed CERTs matched in 1984Q1-2026Q2 Financials,3211
+Unique failed CERTs absent from Financials (pre-1984 / non-filers),374

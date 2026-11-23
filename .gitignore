@@ -6,3 +6,5 @@ data_raw/
 data_processed/
 data_reference/*.csv
 artifacts/
+
+artifacts/benchmark/storage_full/sample*

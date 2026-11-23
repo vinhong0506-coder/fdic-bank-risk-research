@@ -1,0 +1,7 @@
+check,count
+"Duplicate (CERT, REPDTE)",0
+ASSET is null,0
+ASSET <= 0 (Invalid/Special),0
+EQ < 0 (Negative Equity - Distress Signal),15647
+DEP < 0 (Negative Deposits),0
+LNLSNET > ASSET (Loans > Assets),2

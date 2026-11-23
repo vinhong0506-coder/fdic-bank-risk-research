@@ -1,0 +1,7 @@
+Fold,Model,Val_Rows,Val_Positives,PR_AUC,ROC_AUC,Recall_Top5Pct_Q,Brier_Score
+Fold 1 (Val: 1999-2002),Logistic Regression,159601,104,0.1246,0.8418,0.625,0.00086
+Fold 1 (Val: 1999-2002),LightGBM,159601,104,0.168,0.8883,0.7308,0.0006
+Fold 2 (Val: 2003-2005),Logistic Regression,109853,20,0.0466,0.7916,0.7,0.00024
+Fold 2 (Val: 2003-2005),LightGBM,109853,20,0.063,0.923,0.7,0.00021
+Fold 3 (Val: 2006-2007),Logistic Regression,70077,55,0.0609,0.8151,0.4545,0.00077
+Fold 3 (Val: 2006-2007),LightGBM,70077,55,0.0932,0.8891,0.5636,0.00076

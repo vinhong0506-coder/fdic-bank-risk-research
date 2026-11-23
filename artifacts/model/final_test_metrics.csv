@@ -1,0 +1,5 @@
+Dataset,Model,Rows,Positives,PR_AUC,ROC_AUC,Recall_Top5Pct_Q,Recall_Top10Pct_Q,Brier_Score
+Full Test (2009Q1-2025Q2),Logistic Regression,400698,1775,0.6615,0.9867,0.9301,0.9628,0.00245
+Full Test (2009Q1-2025Q2),LightGBM,400698,1775,0.6104,0.9865,0.9313,0.9679,0.00256
+Sensitivity: Excl. Non-Failure Exits,Logistic Regression,386964,1775,0.6737,0.9868,0.9318,0.9645,0.00251
+Sensitivity: Excl. Non-Failure Exits,LightGBM,386964,1775,0.6224,0.9867,0.933,0.9685,0.00262

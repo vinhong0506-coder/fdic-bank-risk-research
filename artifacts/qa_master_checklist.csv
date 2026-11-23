@@ -1,0 +1,10 @@
+Part,Check_Item,Status,Actual_Evidence
+Part 1,Raw Financials Manifest (170Q),PASS,"quarters=170, complete=170, dup=0"
+Part 1,Storage Benchmark (CSV vs Parquet),PASS,"formats=4, rows=1,682,738"
+Part 2,Point-in-Time Clean Panel,PASS,"rows=1,677,107, dup_keys=0, post_exit_zombies=0"
+Part 2,Temporal Split & Embargo (2008),PASS,Test unique failed banks=500 (req >= 50)
+Part 3,3-Engine Benchmark & Equivalence,PASS,"Engines=3, Plans=True, MaxScale=16,771,070 rows"
+Part 4,CAMELS Feature Matrix (Zero NaN/Inf),PASS,"shape=(1677107, 70), features=62, nulls=0, infs=0"
+Part 5,"Modeling, Cost Threshold & MLlib Files",PASS,found=8/8
+Part 6,8 Publication Figures (300 DPI),PASS,found=8/8 PNG files
+Part 6,Git Safety (.gitignore blocks raw/processed),PASS,data_raw & data_processed ignored
