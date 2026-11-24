@@ -1,0 +1,31 @@
+{
+  "status": "VERIFIED",
+  "source": "artifacts/stageD/figures_labeled",
+  "published_directory": "docs/figures",
+  "figure_count": 8,
+  "data_label_count": 80,
+  "completed_benchmark_scales": [
+    1,
+    2,
+    5
+  ],
+  "benchmark_runs": 27,
+  "model_version": "30_base_features_60_predictors",
+  "figures_sha256": {
+    "fig1_storage_benchmark.png": "3165d89a90d446dffba2a8c9e4f3a262df95b001b6bc36c5cfa7a213a7745630",
+    "fig2_capital_regime_audit.png": "4a0551bfef2d66297c8bf750ca7aeb0087c1c9b75245cd19f8494fca8f00d434",
+    "fig3_temporal_split_overview.png": "30da47802e29e3e896b08bd84465108bf85f7d82c07a8d4bbd2cb39acedc98cc",
+    "fig4_engine_benchmark_1x.png": "ee3cabd83aafa7ad32882667d281ec64c5dfe853c0b8feed0fde92d6d61a78fd",
+    "fig5_synthetic_scaling_5x.png": "758b9d1e8f923a4b303efae438cd298feaa867e3fdc693f26c298a4e04f6fe79",
+    "fig6_test_pr_and_calibration.png": "7d687ab53591771819db05246eb9c3c83694addd20317849e9d0eab30b675e9a",
+    "fig7_top10_camels_importance.png": "7651aa74214c029f15db6df4ecfdca22f5061fc3026a678b23a1a3238b78a7a5",
+    "fig8_cost_and_regime_analysis.png": "fdd9694c0021ba74ffd345ae69089906134ea0f76350ef2b2e4f9a71d06d84ea"
+  },
+  "remaining_limitations": [
+    "10x benchmark not measured",
+    "Lifecycle event adjudication remains open",
+    "Final visual inspection required"
+  ],
+  "data_labels_json": "docs/evidence/figure_data_labels.json",
+  "data_labels_json_sha256": "d119875cba143b9d2e091a020a13f476c7c06098a3c98082280f8ff24a87570c"
+}

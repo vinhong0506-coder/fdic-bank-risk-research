@@ -26,7 +26,7 @@ def polars_workload(path: str):
         pl.col('_qid').shift(1).over('CERT').alias('_q1'),
         pl.col('_qid').shift(3).over('CERT').alias('_q3'),
         pl.col('_qid').shift(4).over('CERT').alias('_q4'),
-        pl.col('ROA').rolling_std(window_size=4, min_periods=4, ddof=1).over('CERT').alias('_roa_std'),
+        pl.col('ROA').rolling_std(window_size=4, min_samples=4, ddof=1).over('CERT').alias('_roa_std'),
     )
     lf = lf.with_columns(
         pl.when(pl.col('ASSET')>0).then(pl.col('EQ')/pl.col('ASSET')).alias('capital_ratio'),

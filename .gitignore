@@ -22,3 +22,14 @@ logs/
 ~$*.docx
 .figures_stage_*/
 .figures_prior_*/
+
+.venv311/
+
+env_setup.ps1
+README.txt
+run_stageB.ps1
+scripts/*.py.bak
+*.py.before_*
+repro_validation/
+DaoHuyThanhVinh_11231024_FDIC_EWS_FINAL.docx
+DaoHuyThanhVinh_11231024_FDIC_EWS_FINAL.pdf

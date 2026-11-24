@@ -11,6 +11,39 @@ EXCLUDE_LEAKAGE_COLS = {
     'bkclass', 'est_date', 'target_4q', 'label_reason', 'split'
 }
 
+SELECTED_CAMELS_FEATURES = (
+    'cap_ratio',
+    'rbc_tier1',
+    'rbc_total',
+    'neg_equity_flag',
+    'is_pre_basel',
+    'npl_ratio',
+    'reserve_coverage',
+    'nonperf_asset_ratio',
+    'ore_ratio',
+    're_loan_share',
+    'ci_loan_share',
+    'nonix_asset_ratio',
+    'roa',
+    'roe',
+    'nimy',
+    'roa_lag1',
+    'roa_lag4',
+    'roa_diff_qoq',
+    'roa_std_4q',
+    'nimy_std_4q',
+    'liq_asset_ratio',
+    'liq_dep_ratio',
+    'ldr',
+    'brokered_dep_ratio',
+    'log_asset',
+    'asset_growth_qoq',
+    'asset_growth_yoy',
+    'cap_zscore_q',
+    'roa_zscore_q',
+    'npl_zscore_q',
+)
+
 def safe_div(num: pl.Expr, den: pl.Expr) -> pl.Expr:
     return pl.when(den.is_not_null() & (den > 0)).then(num / den).otherwise(None)
 
@@ -128,8 +161,8 @@ def build_raw_camels_features(lf: pl.LazyFrame) -> pl.LazyFrame:
         pl.when(q_gap_4 & (pl.col('ASSET').shift(4).over('CERT') > 0))
           .then(pl.col('ASSET') / pl.col('ASSET').shift(4).over('CERT') - 1.0)
           .otherwise(None).alias('asset_growth_yoy'),
-        pl.when(q_gap_3).then(pl.col('roa').rolling_std(window_size=4, min_periods=4, ddof=1).over('CERT')).otherwise(None).alias('roa_std_4q'),
-        pl.when(q_gap_3).then(pl.col('nimy').rolling_std(window_size=4, min_periods=4, ddof=1).over('CERT')).otherwise(None).alias('nimy_std_4q'),
+        pl.when(q_gap_3).then(pl.col('roa').rolling_std(window_size=4, min_samples=4, ddof=1).over('CERT')).otherwise(None).alias('roa_std_4q'),
+        pl.when(q_gap_3).then(pl.col('nimy').rolling_std(window_size=4, min_samples=4, ddof=1).over('CERT')).otherwise(None).alias('nimy_std_4q'),
     ])
 
     # Industry-quarter relative z-scores (strictly point-in-time within each REPDTE)
@@ -200,15 +233,25 @@ def build_feature_dataset(pit_path: Path, out_parquet: Path, feat_art_dir: Path)
     meta_cols = [c for c in meta_cols if c in raw_feat_df.columns]
 
     # Select engineered CAMELS features (exclude raw unscaled levels except log_asset & engineered ratios)
-    candidate_feats = [
-        'cap_ratio', 'rbc_tier1', 'rbc_total', 'neg_equity_flag', 'is_pre_basel',
-        'npl_ratio', 'reserve_coverage', 'nonperf_asset_ratio', 'ore_ratio', 're_loan_share', 'ci_loan_share',
-        'eff_ratio', 'nonix_asset_ratio',
-        'roa', 'roe', 'nimy', 'roa_lag1', 'roa_lag4', 'roa_diff_qoq', 'roa_std_4q', 'nimy_std_4q',
-        'liq_asset_ratio', 'liq_dep_ratio', 'ldr', 'brokered_dep_ratio', 'core_dep_ratio',
-        'log_asset', 'asset_growth_qoq', 'asset_growth_yoy', 'cap_zscore_q', 'roa_zscore_q', 'npl_zscore_q'
+    candidate_feats = list(SELECTED_CAMELS_FEATURES)
+    # Choose feature availability exclusively from labeled DEV.
+    # Test and EMBARGO must not determine the model feature set.
+    dev_for_selection = raw_feat_df.filter(
+        (pl.col("split") == "DEV")
+        & pl.col("target_4q").is_not_null()
+    )
+    if dev_for_selection.height == 0:
+        raise ValueError("No labeled DEV rows for feature selection")
+    dev_valid_features = raw_feat_df.filter(
+        (pl.col("split") == "DEV") & pl.col("target_4q").is_not_null()
+    )
+    if dev_valid_features.height == 0:
+        raise ValueError("No labeled Development observations for feature selection")
+    feature_cols = [
+        c for c in candidate_feats
+        if c in raw_feat_df.columns
+        and dev_valid_features[c].null_count() < dev_valid_features.height
     ]
-    feature_cols = [c for c in candidate_feats if c in raw_feat_df.columns and raw_feat_df[c].null_count() < raw_feat_df.height]
     omitted = sorted(set(candidate_feats)-set(feature_cols))
     (feat_art_dir/'omitted_all_missing_features.json').write_text(json.dumps(omitted,indent=2))
 
@@ -220,7 +263,14 @@ def build_feature_dataset(pit_path: Path, out_parquet: Path, feat_art_dir: Path)
     X_trans = prep.transform(pdf[feature_cols])
 
     final_df = pd.concat([pdf[meta_cols].reset_index(drop=True), X_trans.reset_index(drop=True)], axis=1)
-    pl.from_pandas(final_df).write_parquet(out_parquet, compression='zstd')
+    spark_safe = pl.from_pandas(final_df)
+    ns_cols = [name for name, dtype in spark_safe.schema.items()
+               if dtype == pl.Datetime('ns')]
+    if ns_cols:
+        spark_safe = spark_safe.with_columns(
+            [pl.col(name).dt.cast_time_unit('us') for name in ns_cols]
+        )
+    spark_safe.write_parquet(out_parquet, compression='zstd')
 
     (feat_art_dir / 'preprocessor_dev_params.json').write_text(json.dumps(prep.params, indent=2), encoding='utf-8')
     pd.DataFrame({'feature': feature_cols, 'processed_col': feature_cols}).to_csv(feat_art_dir / 'feature_dictionary.csv', index=False)

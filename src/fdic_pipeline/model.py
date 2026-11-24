@@ -14,16 +14,9 @@ from sklearn.metrics import (
 )
 from sklearn.calibration import calibration_curve
 import lightgbm as lgb
-from fdic_pipeline.features import build_raw_camels_features, LeakageSafePreprocessor
+from fdic_pipeline.features import build_raw_camels_features, LeakageSafePreprocessor, SELECTED_CAMELS_FEATURES
 
-BASE_FEATURES = [
-    "cap_ratio", "rbc_tier1", "rbc_total", "neg_equity_flag", "is_pre_basel",
-    "npl_ratio", "reserve_coverage", "nonperf_asset_ratio", "ore_ratio", "re_loan_share", "ci_loan_share",
-    "eff_ratio", "nonix_asset_ratio",
-    "roa", "roe", "nimy", "roa_lag1", "roa_lag4", "roa_diff_qoq", "roa_std_4q", "nimy_std_4q",
-    "liq_asset_ratio", "liq_dep_ratio", "ldr", "brokered_dep_ratio", "core_dep_ratio",
-    "log_asset", "asset_growth_qoq", "asset_growth_yoy", "cap_zscore_q", "roa_zscore_q", "npl_zscore_q"
-]
+BASE_FEATURES = list(SELECTED_CAMELS_FEATURES)
 
 
 def estimate_empirical_cost_ratio(raw_dir: Path, out_dir: Path) -> float:
@@ -147,15 +140,33 @@ def run_spark_mllib_demo(features_parquet: Path, feature_cols: list[str], out_di
         }])
         res.to_csv(out_dir / "spark_mllib_demo.csv", index=False)
     except Exception as exc:
-        pd.DataFrame([{"Status": f"SKIPPED: {exc}"}]).to_csv(out_dir / "spark_mllib_demo.csv", index=False)
+        pd.DataFrame([{"Status": f"FAILED: {exc}"}]).to_csv(
+            out_dir / "spark_mllib_demo.csv", index=False
+        )
+        raise RuntimeError("Spark MLlib execution failed") from exc
 
 
 def run_modeling_pipeline(pit_path: Path, raw_dir: Path, out_dir: Path) -> None:
+    if (out_dir / "final_test_metrics.csv").exists():
+        raise RuntimeError("Frozen Test artifacts exist; archive explicitly before rerunning")
     out_dir.mkdir(parents=True, exist_ok=True)
     emp_ratio = estimate_empirical_cost_ratio(raw_dir, out_dir)
 
     raw_df = build_raw_camels_features(pl.scan_parquet(str(pit_path))).collect().to_pandas()
-    feat_cols = [c for c in BASE_FEATURES if c in raw_df.columns]
+    # Match feature-store selection using labeled DEV only.
+    dev_for_selection = raw_df.loc[
+        (raw_df["split"] == "DEV")
+        & raw_df["target_4q"].notna()
+    ]
+    if dev_for_selection.empty:
+        raise ValueError("No labeled DEV rows for feature selection")
+    dev_feature_mask = (raw_df["split"] == "DEV") & raw_df["target_4q"].notna()
+    if not dev_feature_mask.any():
+        raise ValueError("No labeled Development observations for model feature selection")
+    feat_cols = [
+        c for c in BASE_FEATURES
+        if c in raw_df.columns and raw_df.loc[dev_feature_mask, c].notna().any()
+    ]
 
     dev_df = raw_df[(raw_df["split"] == "DEV") & (raw_df["target_4q"].notna())].copy().reset_index(drop=True)
     test_df = raw_df[(raw_df["split"] == "TEST") & (raw_df["target_4q"].notna())].copy().reset_index(drop=True)
