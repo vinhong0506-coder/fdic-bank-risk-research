@@ -1,11 +1,11 @@
 {
-  "audit_date": "2026-11-24",
+  "audit_date": "2026-11-25",
   "manifest_170_quarters": true,
   "saved_manifest_flags_all_pass": true,
   "raw_rows_manifest_sum": 1682738,
-  "sha256_validation_status": "NOT_INDEPENDENTLY_VERIFIED",
-  "sha256_recomputed_quarters": 0,
-  "sha256_compared_quarters": 0,
+  "sha256_validation_status": "VERIFIED_LOCAL_FILES_AGAINST_SAVED_MANIFEST",
+  "sha256_recomputed_quarters": 170,
+  "sha256_compared_quarters": 170,
   "benchmark_runs_1x_2x_5x": 27,
   "benchmark_complete_3x3x3": true,
   "benchmark_10x_status": "NOT_VERIFIED",
@@ -17,8 +17,10 @@
   "uninstalled_requirements_entries": 86,
   "limitations": [
     "10x not independently verified unless measured",
-    "Stored sha_match flags are not independent source hashes",
-    "Lifecycle adjudication remains incomplete"
+    "Lifecycle adjudication remains incomplete",
+    "Local SHA-256 verification does not establish independent FDIC source/API provenance."
   ],
-  "quarter_validation_note": "Rechecked 170 distinct continuous quarters from actual manifest after correcting the period-format parser."
+  "quarter_validation_note": "Rechecked 170 distinct continuous quarters from actual manifest after correcting the period-format parser.",
+  "sha256_evidence": "docs/evidence/quarter_sha256_independent_20261125.md",
+  "sha256_verification_scope": "Local Parquet files versus saved manifest; not a fresh FDIC API download."
 }

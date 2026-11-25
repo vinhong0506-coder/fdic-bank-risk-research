@@ -37,7 +37,7 @@ def verify_submission():
         txt = page.get_text()
         page_texts.append(txt)
 
-        if "EXECUTIVE SUMMARY AND RESEARCH QUESTIONS" in txt and main_start is None:
+        if "EXECUTIVE SUMMARY" in txt and main_start is None:
             main_start = i + 1
         if "REFERENCES" in txt and ref_start is None:
             ref_start = i + 1

@@ -2,6 +2,8 @@
 
 Generated: 2026-11-24T14:09:34
 
+> **Post-audit addendum (25 November 2026):** Fold-local feature selection was implemented. Fold 1 Logistic Regression AP changed from 0.154802 to 0.210628; LightGBM AP remained 0.239183. The corrected Development OOF LightGBM threshold remained 0.02008020, while LR changed from 0.28266263 to 0.03219052. The historical held-out Test artifacts were preserved. Unit tests: 15 PASS. The final PDF was reported as 24 pages. Local quarterly SHA-256: 170/170 matched the saved manifest. See [CV audit](cv_fold_local_impact_20261125_145302_363270.md) and [checksum evidence](quarter_sha256_independent_20261125.md).
+
 ## Reproduction status
 
 - Stage E: 11 PASS, 4 WARN, 0 FAIL.
@@ -89,8 +91,8 @@ Values below are three-run medians.
 
 1. Independently adjudicate lifecycle conflicts where possible.
 2. Visually inspect all eight labeled figures.
-3. Update Word report tables, text and figure references.
-4. Update README and reproducibility instructions.
+3. Word tables and figures were updated in the 25 November submission; keep later edits consistent.
+4. README and reproducibility instructions were updated for the 25 November release.
 5. Review Git changes and commit curated evidence only.
 
 This document records completed checks and known

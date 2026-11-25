@@ -504,9 +504,9 @@ def build_submission_document() -> Path:
         doc,
         "Key Empirical Findings:\n"
         "1. Storage Engineering: Parquet format with Zstandard (zstd) compression compresses 424.1 MiB of raw CSV Call Reports to 143.9 MiB (a 2.95x physical compression ratio) while accelerating full-table scan query latency by 21.82x (0.47s vs. 10.26s).\n"
-        "2. Compute Scalability (Q1): On single-node multi-core hardware, Polars Lazy API executes complete CAMELS feature transformations across 1.68M rows in 0.797 seconds (2.10M rows/s), running 6.47x faster than pandas (5.157s) and 18.52x faster than PySpark Local[*] (14.757s). Across 27 executed experimental benchmark runs spanning 1x, 2x (3.35M rows), and 5x (8.39M rows), Polars maintains sub-3-second latency. PySpark Local[*] incurs substantial JVM startup, serialization, and Catalyst coordination overhead, confirming that distributed frameworks are inefficient on single-node hardware. A distributed Spark cluster is justified only when datasets exceed physical workstation RAM (>64 GB) across multi-node clusters.\n"
-        "3. Data Quality & Anti-Leakage (Q2): The pipeline systematically identifies and eliminates 5,631 post-closure zombie filings across 62 unique failure CERTs. Look-ahead bias is strictly prevented through four layers: an integer calendar quarter index (q_idx) preventing artificial lag shifts, a 1-year mandatory embargo quarantine (calendar year 2008: 33,039 valid observations, 176 unique failed banks) separating Development from Test, an explicit 4-quarter forward failure target window, and preprocessor transformations (Winsorization, imputation, robust scaling) fitted strictly on Development data.\n"
-        "4. Model Defensibility & Supervisory Utility (Q3): Evaluated strictly ONCE on 386,964 held-out out-of-time bank-quarters (2009Q1–2025Q2; 1,775 positive bank-quarters, 500 unique failed bank charters), LightGBM calibrated under an empirical FDIC resolution loss ratio of 40.3:1 (median resolution loss = 20.17% of assets; assumed exam cost CFP = 0.50% of assets) at frozen threshold tau* = 0.0201 captures 484 out of 500 unique failed banks (96.8% institutional recall) and 93.30% of distressed quarters while auditing only 1.78% of the banking sector, reducing expected supervisory loss units by 59.7% relative to uncalibrated Logistic Regression.",
+        "2. Compute Scalability (Q1): On single-node multi-core hardware, Polars Lazy API executes a representative seven-feature financial analytics workload across 1.68M rows in 0.797 seconds (2.10M rows/s), running 6.47x faster than pandas (5.157s) and 18.52x faster than PySpark Local[*] (14.757s). Across 27 executed experimental benchmark runs spanning 1x, 2x (3.35M rows), and 5x (8.39M rows), Polars maintains sub-3-second latency. PySpark Local[*] incurs substantial JVM startup, serialization, and Catalyst coordination overhead, confirming that distributed frameworks are inefficient on single-node hardware. A distributed Spark cluster is justified when working sets exceed available host physical RAM or when multi-node distributed storage requires network shuffling.\n"
+        "3. Data Quality & Anti-Leakage (Q2): The pipeline systematically identifies and eliminates 5,631 post-closure zombie filings across 62 unique failure CERTs. Look-ahead bias is strictly prevented through four layers: an integer calendar quarter index (q_idx) preventing artificial lag shifts, a 1-year mandatory embargo quarantine (calendar year 2008: 33,039 valid observations, 176 unique failed banks) separating Development from Test, an explicit 4-quarter forward failure target window, and preprocessor transformations (Winsorization, median imputation, Z-score standardization) fitted strictly on Development data. The panel is structured as a report-date Point-in-Time (PIT) panel indexed by Call Report date (REPDTE), distinguishing accounting quarter boundaries from as-reported vintage filing archives.\n"
+        "4. Model Defensibility & Supervisory Utility (Q3): Evaluated strictly ONCE on 386,964 held-out out-of-time bank-quarters (2009Q1–2025Q2; 1,775 positive bank-quarters, 500 unique failed bank charters), LightGBM calibrated under an empirical FDIC resolution loss ratio of 40.3:1 (median resolution loss = 20.17% of assets; assumed exam cost CFP = 0.50% of assets) at frozen threshold tau* = 0.0201 captures 484 out of 500 unique failed banks (96.8% institutional recall) and 93.30% of distressed quarters while flagging only 1.78% of eligible held-out Test bank-quarter observations (5,230 alerts), reducing modeled expected supervisory loss units by 59.7% relative to uncalibrated Logistic Regression under the assumed loss function.",
         bold_prefix="Summary of Core Findings: "
     )
 
@@ -635,7 +635,7 @@ def build_submission_document() -> Path:
     add_heading_2(doc, "2.3 Point-in-Time Panel Construction and Temporal Splitting")
     add_paragraph(
         doc,
-        "The master failure registry (failures.parquet) contains 4,117 raw historical failure records dating back to the inception of the FDIC in 1934. Table 2.2 documents the systematic reconciliation between raw failure records and the active financial panel. After excluding 488 records with null CERT numbers and deduplicating 44 multi-agreement filings for single failure events, exactly 3,585 unique failed bank charters remain. Of these, 3,241 unique failed CERTs matched commercial banks filing active Call Reports within our 1984Q1–2026Q2 study window; the remaining 344 institutions represent pre-1984 historical failures or non-filing specialty entities.",
+        "The master failure registry (failures.parquet) contains 4,117 raw historical failure records dating back to the inception of the FDIC in 1934. Table 2.2 documents the systematic reconciliation between raw failure records and the active financial panel. After excluding 488 records with null CERT numbers and deduplicating 44 multi-agreement filings for single failure events, exactly 3,585 unique failed bank charters remain. Of these, 3,241 unique failed CERTs matched commercial banks filing active Call Reports within our 1984Q1–2026Q2 study window. The remaining 344 failure registry entries represent historical closures that do not appear in the 1984Q1–2026Q2 Call Report panel; qualified possibilities include failures occurring prior to the 1984 Call Report inception, non-depository trust entities or specialized institutions exempt from standard commercial bank Call Report filing, or unlinked historical charter identifiers. Furthermore, the dataset constitutes a report-date Point-in-Time (PIT) panel indexed by Call Report date (REPDTE), which establishes accounting quarter boundaries and prevents forward lookahead. However, because banks submit filings within a statutory 30-to-45-day reporting grace period and may subsequently file accounting restatements, report-date PIT reflects as-reported accounting dates rather than a physical real-time database snapshot archive (vintage PIT).",
         bold_prefix="Failure Registry Reconciliation: "
     )
 
@@ -645,7 +645,7 @@ def build_submission_document() -> Path:
         ["FDIC Historical Failures", "4,117", "488 Null CERT", "3,585 CERTs", "3,241 CERTs", "Historical closures dating back to 1934"],
         ["Duplicate Event Filings", "44", "44 Multi-action", "0 Deduplicated", "N/A", "Multiple resolution agreements for single failure"],
         ["Matched in Active Panel", "3,241", "0", "3,241 CERTs", "3,241 CERTs", "Commercial banks active in 1984Q1–2026Q2"],
-        ["Unmatched Historical", "344", "0", "344 CERTs", "0 Matched", "Failures prior to 1984 or non-filing specialty entities"]
+        ["Unmatched Historical", "344", "0", "344 CERTs", "0 Matched", "Closures prior to 1984, non-depository trust entities, or unlinked charter IDs"]
     ]
     add_styled_table(
         doc,
@@ -706,7 +706,7 @@ def build_submission_document() -> Path:
     add_heading_2(doc, "3.1 Polars Lazy API Implementation and Optimization Plan")
     add_paragraph(
         doc,
-        "The core data engineering transformations were implemented using the Polars Lazy API (src/fdic_pipeline/workload.py). Polars is an open-source DataFrame library written in Rust, built on top of the Apache Arrow columnar memory format. Rather than executing transformations eagerly step-by-step, Polars constructs an internal directed acyclic graph (DAG) representing the complete sequence of logical operations. When collect() is invoked, Polars' query optimizer compiles the logical plan into a highly optimized physical plan.",
+        "The core data engineering transformations were implemented using the Polars Lazy API (src/fdic_pipeline/workload.py). The measured benchmarking workload in workload.py represents an intensive seven-feature, calendar-aware financial risk workload (capital_ratio, loan_asset_ratio, liquidity_ratio, asset_growth_qoq, asset_growth_yoy, roa_std_4q, and cap_zscore_pit), rather than an execution of all 30 CAMELS features. This representative workload isolates the core computational bottlenecks: multi-quarter lags, calendar gap verification, rolling standard deviations over bank partitions, and cross-sectional quarterly z-score aggregations. Polars is an open-source DataFrame library written in Rust, built on top of the Apache Arrow columnar memory format. Rather than executing transformations eagerly step-by-step, Polars constructs an internal directed acyclic graph (DAG) representing the complete sequence of logical operations. When collect() is invoked, Polars' query optimizer compiles the logical plan into a highly optimized physical plan.",
         bold_prefix="Rust Vectorized Engine: "
     )
     add_paragraph(
@@ -725,7 +725,7 @@ def build_submission_document() -> Path:
     add_heading_2(doc, "3.3 Distributed PySpark Local[*] and Catalyst Plan Execution")
     add_paragraph(
         doc,
-        "To evaluate distributed execution, the identical feature engineering pipeline was implemented in Apache Spark (PySpark 3.5.3) running in Local[*] mode, configured with 4 GB JVM driver memory and utilizing all 16 available hardware threads. Analysis of Spark's Catalyst physical plan (artifacts/stageC/benchmark_1x_r3/spark_1x_plan.txt) reveals the structural mechanics of distributed execution on a single workstation:",
+        "To evaluate distributed execution, the identical feature engineering pipeline was implemented in Apache Spark (PySpark 3.5.3) running in Local[*] mode, configured with 8 shuffle partitions (spark.sql.shuffle.partitions = 8) and 4 GB JVM driver memory, utilizing all 16 available hardware threads. Analysis of Spark's Catalyst physical plan (artifacts/stageC/benchmark_1x_r3/spark_1x_plan.txt) reveals the structural mechanics of distributed execution on a single workstation:",
         bold_prefix="PySpark Architecture: "
     )
     add_paragraph(
@@ -820,7 +820,7 @@ def build_submission_document() -> Path:
     )
     add_paragraph(
         doc,
-        "Under what conditions is a distributed Spark cluster justified? Based on our empirical measurements, deploying a multi-node distributed Spark cluster is justified if and only if: (1) Working set size exceeds single-node physical RAM (>64 GB), causing fatal operating system paging and out-of-memory (OOM) kernel crashes; (2) Data resides across distributed cloud object stores (Amazon S3, HDFS, Azure Data Lake) requiring partition-level distributed shuffle across independent physical network nodes; (3) Analytical pipelines require real-time integration with distributed streaming brokers (Apache Kafka); or (4) Modeling pipelines utilize distributed cluster MLlib algorithms. For historical FDIC Call Report analytics on single-node workstations, Polars Lazy API is the definitively superior engine in latency, memory efficiency, and operational simplicity.",
+        "Under what conditions is a distributed Spark cluster justified? Based on our empirical measurements, deploying a multi-node distributed Spark cluster is justified if and only if: (1) Working set size exceeds available physical host memory, causing operating system page thrashing and out-of-memory (OOM) kernel crashes; (2) Data resides across distributed cloud object stores (Amazon S3, HDFS, Azure Data Lake) requiring partition-level distributed shuffle across independent physical network nodes; (3) Analytical pipelines require real-time integration with distributed streaming brokers (Apache Kafka); or (4) Modeling pipelines utilize distributed cluster MLlib algorithms. For historical FDIC Call Report analytics on single-node workstations where the dataset fits in physical memory, Polars Lazy API is the definitively superior engine in latency, memory efficiency, and operational simplicity.",
         bold_prefix="Cluster Break-Even Boundary: "
     )
 
@@ -832,7 +832,7 @@ def build_submission_document() -> Path:
     add_heading_2(doc, "4.1 CAMELS Feature Selection and Financial Interpretability")
     add_paragraph(
         doc,
-        "The feature engineering pipeline operationalizes the supervisory CAMELS rating taxonomy, which regulatory examiners use to evaluate bank safety and soundness. The feature contract (docs/evidence/feature_contract.md) defines exactly 30 Development-available base financial features, plus 30 explicit missingness indicators (_isna), producing a verified predictor space of 60 columns. Table 4.1 details the economic rationale, mathematical formulations, and predictive importance across all active CAMELS dimensions.",
+        "The feature engineering pipeline operationalizes the supervisory CAMELS rating taxonomy, which regulatory examiners use to evaluate bank safety and soundness. Specifically, the feature space is composed of CAMELS-inspired financial indicators augmented by size, growth and peer-relative information. In regulatory CAMELS supervision, 'S' formally designates Sensitivity to Market Risk; our feature pipeline operationalizes core CAMELS dimensions and explicitly augments them with institutional scale (log_asset), balance sheet growth momentum (asset_growth_qoq, asset_growth_yoy), and peer-relative decile positioning (cap_zscore_q, roa_zscore_q, npl_zscore_q). The feature contract (docs/evidence/feature_contract.md) defines exactly 30 Development-available base financial features, plus 30 explicit missingness indicators (_isna), producing a verified predictor space of 60 columns. Table 4.1 details the economic rationale, mathematical formulations, and predictive importance across all active dimensions.",
         bold_prefix="CAMELS Taxonomy Architecture: "
     )
 
@@ -840,15 +840,15 @@ def build_submission_document() -> Path:
     headers_t41 = ["CAMELS Dimension", "Feature Name", "FDIC Financial Formula", "LightGBM Gain", "LR Coef", "Economic Intuition & Supervisory Role"]
     data_t41 = [
         ["C - Capital", "cap_ratio", "EQ / ASSET", "654,601", "-2.474", "Primary equity leverage buffer; top failure predictor"],
-        ["E - Earnings", "roa", "(NIMY - NONIX) / ASSET", "182,416", "-0.166", "Core operational profitability; absorbs credit losses"],
-        ["C - Capital", "rbc_tier1", "RBC1AAJ / RBCRWAJ", "63,167", "-0.302", "Basel Tier 1 risk-based capital adequacy"],
+        ["E - Earnings", "roa", "ROA (reported field)", "182,416", "-0.166", "Core operational profitability; absorbs credit losses"],
+        ["C - Capital", "rbc_tier1", "RBC1AAJ (reported field)", "63,167", "-0.302", "Basel Tier 1 risk-based capital adequacy"],
         ["C - Capital", "cap_zscore_q", "(cap - mean_q) / std_q", "52,559", "+0.282", "Peer-relative capitalization decile within quarter"],
         ["A - Asset Quality", "npl_ratio", "NCLNLS / LNLSNET", "45,567", "+0.007", "Non-performing loan burden and credit impairment"],
-        ["E - Earnings", "roe", "NETINC / EQ", "45,101", "-0.204", "Return on book equity; shareholder capital efficiency"],
-        ["C - Capital", "rbc_total", "RBCRWAJ capital buffer", "33,888", "-2.439", "Total Basel risk-weighted regulatory capital"],
-        ["L - Liquidity", "liq_dep_ratio", "(CHBAL + SC) / DEPI", "23,455", "+0.363", "Liquid cash & securities coverage of deposit base"],
+        ["E - Earnings", "roe", "ROE (reported field)", "45,101", "-0.204", "Return on book equity; shareholder capital efficiency"],
+        ["C - Capital", "rbc_total", "RBCRWAJ (reported field)", "33,888", "-2.439", "Total Basel risk-weighted regulatory capital"],
+        ["L - Liquidity", "liq_dep_ratio", "(CHBAL + SC) / DEP", "23,455", "+0.363", "Liquid cash & securities coverage of deposit base"],
         ["E - Earnings", "roa_std_4q", "rolling_std(roa, 4Q)", "22,433", "+0.073", "Earnings stream volatility; instability precedes insolvency"],
-        ["S - Size & Growth", "asset_growth_yoy", "ASSET_t / ASSET_{t-4} - 1", "21,353", "-0.078", "Aggressive balance sheet expansion flag"]
+        ["Augmented: Growth", "asset_growth_yoy", "ASSET_t / ASSET_{t-4} - 1", "21,353", "-0.078", "Aggressive balance sheet expansion flag"]
     ]
     add_styled_table(
         doc,
@@ -881,12 +881,12 @@ def build_submission_document() -> Path:
     add_heading_2(doc, "4.3 Train-Only Preprocessing Pipeline and Invariance Testing")
     add_paragraph(
         doc,
-        "To prevent look-ahead contamination during preprocessing, all feature transformations are encapsulated in a strict LeakageSafePreprocessor (src/fdic_pipeline/model.py). Imputation medians, robust scaling interquartile ranges (IQR), and Winsorization percentiles (1st and 99th percentiles) are fitted EXCLUSIVELY on the labeled Development partition (1984Q1–2007Q4). The learned transformation parameters are frozen and serialized to artifacts/features/preprocessor_dev_params.json, and subsequently applied to transform the held-out Test split (2009Q1–2025Q2) without modification.",
+        "To prevent look-ahead contamination during preprocessing, all feature transformations are encapsulated in a strict LeakageSafePreprocessor (src/fdic_pipeline/features.py). Continuous predictors undergo two-sided Winsorization at the 1st and 99th percentiles to mitigate extreme Call Report outliers, followed by training-set median imputation for missing values, and parametric mean/standard-deviation Z-score standardization: x_norm = (clip(x, p01, p99) - mean_tr) / std_tr. Imputation medians, Winsorization bounds, and standardization moments are fitted EXCLUSIVELY on the labeled training partition. The learned transformation parameters are frozen and serialized to artifacts/features/preprocessor_dev_params.json, and subsequently applied to transform the held-out Test split (2009Q1–2025Q2) without re-fitting.",
         bold_prefix="Train-Only Preprocessing: "
     )
     add_paragraph(
         doc,
-        "The pipeline's anti-leakage architecture was validated via automated synthetic future-perturbation unit tests (tests/test_pipeline.py). These tests inject synthetic extreme values and future failure labels into the Test partition and verify that Development feature values, imputation statistics, and model parameters remain 100% bitwise invariant. While passing unit tests confirms that the software pipeline avoids mechanical look-ahead leaks, it is honestly disclosed that unit tests cannot prove the complete absence of historical reporting revisions by the FDIC itself.",
+        "The pipeline's anti-leakage architecture was validated via automated synthetic future-perturbation and invariance unit tests (tests/test_feature_leakage.py, tests/test_fold_local_feature_selection.py, and tests/test_cv_feature_local_guard.py; 15 passed). These tests inject synthetic extreme values and future failure labels into the Test or Validation partitions and verify that Development feature values, imputation statistics, and fold-local feature lists remain 100% invariant. Following an independent CV audit (docs/evidence/cv_feature_availability_audit.md), src/fdic_pipeline/model.py was patched with select_fold_available_features() so that CV feature availability is selected strictly independently from each fold's Training partition rather than across the full Development set (1984–2007). As verified in docs/evidence/cv_fold_local_impact_20261125_145302_363270.md, Fold 1 (Train: 1984Q1–1997Q4) drops nonperf_asset_ratio (29 active features, because Call Report item P3ASSET was first introduced in 2001Q1), whereas Fold 2, Fold 3, and the final full-Development model (239,942 valid observations) retain all 30 features. The final model was not retrained and published held-out Test metrics remain untouched.",
         bold_prefix="Invariance Testing & Disclosure: "
     )
 
@@ -905,27 +905,32 @@ def build_submission_document() -> Path:
     add_heading_2(doc, "5.2 Expanding Window Cross-Validation Architecture")
     add_paragraph(
         doc,
-        "Random k-fold cross-validation is fatally invalid for longitudinal financial panels because randomly partitioning bank-quarters leaks future macro-financial crisis information into training folds. To enforce strict temporal validity, model hyperparameter tuning was conducted exclusively on the Development panel (1984Q1–2007Q4) using a 3-fold expanding time-series cross-validation scheme with an absolute 4-quarter purging buffer separating training and validation windows.",
+        "Random k-fold cross-validation is fatally invalid for longitudinal financial panels because randomly partitioning bank-quarters leaks future macro-financial crisis information into training folds. To enforce strict temporal validity, predefined baseline model configurations were evaluated exclusively on the Development panel (1984Q1–2007Q4) using a 3-fold expanding time-series cross-validation scheme with an absolute 4-quarter purging buffer separating training and validation windows. Within each fold, active feature availability is selected strictly independently from that fold's own Training partition (select_fold_available_features(tr, BASE_FEATURES) in src/fdic_pipeline/model.py) prior to fitting LeakageSafePreprocessor: Fold 1 (Train: 1984Q1–1997Q4, 809,297 rows) selects 29 features (excluding nonperf_asset_ratio), while Fold 2 (1984Q1–2001Q4, 965,816 rows) and Fold 3 (1984Q1–2004Q4, 1,074,176 rows) retain all 30 features.",
         bold_prefix="Expanding Window Protocol: "
     )
 
     # Table 5.1 CV Performance
-    headers_t51 = ["Validation Fold", "Model Architecture", "Validation Window", "Val Obs", "Val Positives", "PR-AUC", "ROC-AUC", "Recall @ Top 5%", "Brier Score"]
+    headers_t51 = ["Validation Fold", "Model Architecture", "Validation Window", "Train Feats", "Val Obs", "Val Pos", "PR-AUC", "ROC-AUC", "Recall @ Top 5%", "Brier Score"]
     data_t51 = [
-        ["Fold 1", "Logistic Regression", "1999Q1–2002Q4", "152,958", "104", "0.1540", "0.8386", "63.46%", "0.00202"],
-        ["Fold 1", "LightGBM Classifier", "1999Q1–2002Q4", "152,958", "104", "0.2392", "0.8930", "74.04%", "0.00058"],
-        ["Fold 2", "Logistic Regression", "2003Q1–2005Q4", "105,955", "20", "0.0680", "0.7806", "70.00%", "0.00025"],
-        ["Fold 2", "LightGBM Classifier", "2003Q1–2005Q4", "105,955", "20", "0.0763", "0.8987", "75.00%", "0.00021"],
-        ["Fold 3", "Logistic Regression", "2006Q1–2007Q4", "67,468", "55", "0.0869", "0.8102", "45.45%", "0.00079"],
-        ["Fold 3", "LightGBM Classifier", "2006Q1–2007Q4", "67,468", "55", "0.1183", "0.9023", "54.55%", "0.00078"]
+        ["Fold 1", "Logistic Regression", "1999Q1–2002Q4", "29", "152,958", "104", "0.2106", "0.8415", "63.46%", "0.00061"],
+        ["Fold 1", "LightGBM Classifier", "1999Q1–2002Q4", "29", "152,958", "104", "0.2392", "0.8930", "74.04%", "0.00058"],
+        ["Fold 2", "Logistic Regression", "2003Q1–2005Q4", "30", "105,955", "20", "0.0651", "0.7805", "70.00%", "0.00025"],
+        ["Fold 2", "LightGBM Classifier", "2003Q1–2005Q4", "30", "105,955", "20", "0.0763", "0.8987", "75.00%", "0.00021"],
+        ["Fold 3", "Logistic Regression", "2006Q1–2007Q4", "30", "67,468", "55", "0.0840", "0.8045", "43.64%", "0.00079"],
+        ["Fold 3", "LightGBM Classifier", "2006Q1–2007Q4", "30", "67,468", "55", "0.1183", "0.9023", "54.55%", "0.00078"]
     ]
     add_styled_table(
         doc,
         headers=headers_t51,
         data_rows=data_t51,
-        col_widths=[0.8, 1.3, 1.2, 0.7, 0.7, 0.5, 0.5, 0.7, 0.5],
-        caption="Table 5.1: 3-Fold Expanding Time-Series Cross-Validation Performance on Development Panel (1984–2007)",
-        alignments=[WD_ALIGN_PARAGRAPH.LEFT, WD_ALIGN_PARAGRAPH.LEFT, WD_ALIGN_PARAGRAPH.CENTER, WD_ALIGN_PARAGRAPH.RIGHT, WD_ALIGN_PARAGRAPH.RIGHT, WD_ALIGN_PARAGRAPH.RIGHT, WD_ALIGN_PARAGRAPH.RIGHT, WD_ALIGN_PARAGRAPH.RIGHT, WD_ALIGN_PARAGRAPH.RIGHT]
+        col_widths=[0.65, 1.25, 1.05, 0.45, 0.65, 0.45, 0.5, 0.5, 0.6, 0.4],
+        caption="Table 5.1: 3-Fold Expanding Time-Series Cross-Validation Performance with Fold-Local Feature Selection (Development Panel, 1984–2007)",
+        alignments=[WD_ALIGN_PARAGRAPH.LEFT, WD_ALIGN_PARAGRAPH.LEFT, WD_ALIGN_PARAGRAPH.CENTER, WD_ALIGN_PARAGRAPH.RIGHT, WD_ALIGN_PARAGRAPH.RIGHT, WD_ALIGN_PARAGRAPH.RIGHT, WD_ALIGN_PARAGRAPH.RIGHT, WD_ALIGN_PARAGRAPH.RIGHT, WD_ALIGN_PARAGRAPH.RIGHT, WD_ALIGN_PARAGRAPH.RIGHT]
+    )
+    add_paragraph(
+        doc,
+        "In the controlled fold-local CV audit (docs/evidence/cv_fold_local_impact_20261125_145302_363270.md), dropping the all-null nonperf_asset_ratio in Fold 1 improves Logistic Regression AP from 0.154802 to 0.210628 (+0.055826), ROC-AUC from 0.839364 to 0.841550 (+0.002186), and Brier Score from 0.00209 to 0.00061. LightGBM Fold 1 (AP 0.239183, ROC-AUC 0.892996) and all Fold 2/Fold 3 metrics exhibit 0.000000 change between pre-patch and post-patch current-source CV (Mean |Δp| = 0). Pre-patch current-source LR figures (0.1548 / 0.0651 / 0.0840) differ slightly from the earlier archived dev_timeseries_cv.csv (0.1540 / 0.0680 / 0.0869), whereas LightGBM is identical.",
+        bold_prefix="Fold-Local CV Audit Impact: "
     )
 
     add_heading_2(doc, "5.3 Highly Imbalanced Metric Evaluation and Out-of-Time Test Results")
@@ -971,7 +976,7 @@ def build_submission_document() -> Path:
     )
     add_paragraph(
         doc,
-        "The optimal operational alert threshold tau* was identified by minimizing the expected supervisory loss function on out-of-fold Development predictions: L(tau) = CFP * FP(tau) + L_FN * FN(tau). Optimal thresholds were frozen strictly on Development data and saved to frozen_development_decisions.json (tau* = 0.0201 for LightGBM; tau* = 0.2755 for Logistic Regression under the 40.3:1 loss matrix). Table 5.3 reports the held-out Test evaluation across three cost scenarios.",
+        "The optimal operational alert threshold tau* was identified by minimizing the expected supervisory loss function on out-of-fold Development predictions: L(tau) = CFP * FP(tau) + L_FN * FN(tau). Specifically, tau* was evaluated over a 501-point empirical quantile grid spanning observed out-of-fold predicted probabilities (including boundary thresholds 0.0 and 1.0). Optimal thresholds were frozen strictly on Development data and saved to artifacts/model_30feature_corrected/frozen_development_decisions.json (tau* = 0.0201 for LightGBM; tau* = 0.2755 for Logistic Regression under the 40.3:1 loss matrix). In Table 5.3, Alert Rate (%) denotes the fraction of eligible held-out Test bank-quarter observations flagged (e.g., 5,230 FP + 1,656 TP = 6,886 alerts out of 386,964 test quarters = 1.78%), and cost reductions represent modeled expected reductions under the assumed loss function. Table 5.3 reports the held-out Test evaluation across three cost scenarios.",
         bold_prefix="Cost-Sensitive Thresholding: "
     )
 
@@ -992,6 +997,29 @@ def build_submission_document() -> Path:
         col_widths=[1.1, 1.1, 0.5, 0.5, 0.5, 0.5, 0.6, 0.6, 0.8, 0.5, 0.8],
         caption="Table 5.3: Supervisory Cost Matrix Sensitivity Analysis (Optimal Thresholds Frozen from Development OOF)",
         alignments=[WD_ALIGN_PARAGRAPH.LEFT, WD_ALIGN_PARAGRAPH.LEFT, WD_ALIGN_PARAGRAPH.RIGHT, WD_ALIGN_PARAGRAPH.RIGHT, WD_ALIGN_PARAGRAPH.RIGHT, WD_ALIGN_PARAGRAPH.RIGHT, WD_ALIGN_PARAGRAPH.RIGHT, WD_ALIGN_PARAGRAPH.RIGHT, WD_ALIGN_PARAGRAPH.RIGHT, WD_ALIGN_PARAGRAPH.RIGHT, WD_ALIGN_PARAGRAPH.RIGHT]
+    )
+
+    headers_t53b = ["Cost Scenario", "Model", "Hist. Frozen τ*", "Pre-Patch OOF τ", "Post-Audit OOF τ", "Δτ (Audit)", "Pre-Patch OOF Cost", "Post-Audit OOF Cost"]
+    data_t53b = [
+        ["Conservative (10:1)", "Logistic Regression", "0.9996", "0.99961394", "0.03219052", "-0.96742342", "1,780.0", "1,684.0"],
+        ["Conservative (10:1)", "LightGBM Classifier", "0.0201", "0.02008020", "0.02008020", "+0.00000000", "1,618.0", "1,618.0"],
+        ["Loss-Informed (40.3:1)", "Logistic Regression", "0.2755", "0.28266263", "0.03219052", "-0.25047211", "5,719.1", "5,017.0"],
+        ["Loss-Informed (40.3:1)", "LightGBM Classifier", "0.0201", "0.02008020", "0.02008020", "+0.00000000", "4,769.2", "4,769.2"],
+        ["High Penalty (50:1)", "Logistic Regression", "0.2755", "0.28266263", "0.03219052", "-0.25047211", "6,951.0", "6,084.0"],
+        ["High Penalty (50:1)", "LightGBM Classifier", "0.0201", "0.02008020", "0.02008020", "+0.00000000", "5,778.0", "5,778.0"]
+    ]
+    add_styled_table(
+        doc,
+        headers=headers_t53b,
+        data_rows=data_t53b,
+        col_widths=[1.05, 1.05, 0.65, 0.8, 0.8, 0.75, 0.7, 0.7],
+        caption="Table 5.3b: Post-Audit Development-Only OOF Threshold Comparison (Historical Frozen Policy vs. Pre-Patch vs. Fold-Local Corrected)",
+        alignments=[WD_ALIGN_PARAGRAPH.LEFT, WD_ALIGN_PARAGRAPH.LEFT, WD_ALIGN_PARAGRAPH.RIGHT, WD_ALIGN_PARAGRAPH.RIGHT, WD_ALIGN_PARAGRAPH.RIGHT, WD_ALIGN_PARAGRAPH.RIGHT, WD_ALIGN_PARAGRAPH.RIGHT, WD_ALIGN_PARAGRAPH.RIGHT]
+    )
+    add_paragraph(
+        doc,
+        "Table 5.3b distinguishes the originally frozen pre-Test policy (artifacts/model_30feature_corrected/frozen_development_decisions.json, used for Table 5.3) from the post-audit Development-only OOF sensitivity thresholds (docs/evidence/cv_fold_local_impact_20261125_145302_363270.md). LightGBM's optimal threshold (0.02008020) and OOF cost (4,769.2 at 40.3:1) are 100% invariant. For Logistic Regression, fold-local selection in Fold 1 shifts the post-audit OOF threshold at 40.3:1 from 0.28266263 (pre-patch reproduction) to 0.03219052. Because the held-out Test set has already been observed, this post-audit LR threshold is strictly a Development-only sensitivity finding; it was NOT evaluated as a pre-Test frozen policy, the final model was NOT retrained, and published Test metrics in Tables 5.2–5.4 remain unchanged.",
+        bold_prefix="OOF Threshold Audit & Test Freeze Governance: "
     )
 
     add_heading_2(doc, "5.5 Macroeconomic Regime Sensitivity and Failure Non-Additivity")
@@ -1068,7 +1096,7 @@ def build_submission_document() -> Path:
     )
     add_paragraph(
         doc,
-        "Direct Empirical Answer to Q3: Yes. Evaluated strictly ONCE on the frozen out-of-time Test split (2009Q1–2025Q2; 386,964 valid labeled observations, 1,775 failure events, 500 unique failed bank charters), LightGBM calibrated under an empirical FDIC resolution loss ratio of 40.3:1 (median resolution loss = 20.17% of total assets; assumed examination cost CFP = 0.50% of assets) at frozen threshold tau* = 0.0201 captures 484 out of 500 unique failed banks (96.8% institutional recall) and 93.30% of distressed bank-quarters at an alert rate of only 1.78%, cutting expected supervisory examination loss by 59.7% relative to uncalibrated Logistic Regression (10,025.7 vs. 24,863.0 expected cost units).\n\n"
+        "Direct Empirical Answer to Q3: Yes. Evaluated strictly ONCE on the frozen out-of-time Test split (2009Q1–2025Q2; 386,964 valid labeled observations, 1,775 failure events, 500 unique failed bank charters), LightGBM calibrated under an empirical FDIC resolution loss ratio of 40.3:1 (median resolution loss = 20.17% of total assets; assumed examination cost CFP = 0.50% of assets) at frozen threshold tau* = 0.0201 captures 484 out of 500 unique failed banks (96.8% institutional recall) and 93.30% of distressed bank-quarters flagging only 1.78% of eligible held-out Test bank-quarter observations, cutting modeled expected supervisory examination loss by 59.7% relative to uncalibrated Logistic Regression (10,025.7 vs. 24,863.0 expected cost units) under the assumed loss function.\n\n"
         "Macroeconomic regime diagnostics reveal critical boundaries: the model was virtually clairvoyant during the credit-driven Great Financial Crisis (capturing 460 of 468 banks, 98.29%), but captured only 5 of 9 institutions (55.56%) during the 2023 regional banking turmoil. The collapse of Silicon Valley Bank was driven by unhedged interest rate duration mismatch and hyper-concentrated digital deposit flight occurring within 48 hours—dynamics that quarterly Call Reports cannot observe in real time.",
         bold_prefix="Direct Answer to Q3: "
     )
@@ -1077,7 +1105,7 @@ def build_submission_document() -> Path:
     add_paragraph(
         doc,
         "In accordance with rigorous academic integrity standards, the following known limitations are formally disclosed:\n"
-        "1. Workstation Hardware Boundary: Due to single-node workstation physical RAM constraints (16 GB), 10x synthetic scaling was not executed. Single-node superiority of Polars is proven up to 5x (8.39M rows); distributed Spark scaling requires a multi-node cluster (>64 GB RAM).\n"
+        "1. Workstation Hardware Boundary: Due to single-node workstation physical RAM constraints (16 GB), 10x synthetic scaling was not executed. Single-node superiority of Polars is proven up to 5x (8.39M rows); distributed Spark scaling requires a multi-node cluster or datasets exceeding physical RAM.\n"
         "2. Examination Cost Parameter Assumption: The examination cost parameter CFP = 0.005 * total assets is an assumed supervisory scenario benchmark, not an invoice audit identified from historical FDIC operational budgets.\n"
         "3. Lifecycle Event Adjudication: Exactly 29 conflicting historical CERTs with inst_end_date < failure_date (106 positive bank-quarters historically, 0 in Test) remain pending granular merger-registry matching. Unknown exits remain censored to avoid negative label corruption.\n"
         "4. High-Frequency Run Blindness: Quarterly Call Reports cannot capture viral, social-media-accelerated deposit runs occurring within hours (e.g., Silicon Valley Bank in March 2023).\n"
@@ -1089,10 +1117,10 @@ def build_submission_document() -> Path:
     add_paragraph(
         doc,
         "Translating this early-warning framework to the Vietnamese banking sector under the State Bank of Vietnam (SBV — Ngan hang Nha nuoc Viet Nam) requires addressing four systemic structural differences:\n\n"
-        "1. Regulatory Accounting Mapping: Commercial banks in Vietnam report under Vietnamese Accounting Standards (VAS) and SBV circulars. Capital adequacy must be mapped to Circular 41/2016/TT-NHNN (enforcing Basel II standardized CAR >= 8.0%). Asset quality must incorporate Circular 11/2021/TT-NHNN governing 5 debt classification categories (No nhom 1 den Nhom 5). Management efficiency and internal controls must align with Circular 13/2018/TT-NHNN (Internal Control System, ICAAP, LCR, NSFR). Liquidity limits must enforce Circular 22/2019/TT-NHNN as amended by Circular 08/2020/TT-NHNN (capping short-term funds for medium/long-term loans at 30% from Oct 2023). Debt rescheduling must incorporate Circular 02/2023/TT-NHNN as amended by Circular 06/2024/TT-NHNN.\n\n"
-        "2. Event Adjudication (Special Control & 0-VND Compulsory Acquisitions): In Vietnam, commercial bank bankruptcy has never been permitted due to systemic stability priorities. Under the Law on Credit Institutions 2024 (Law No. 32/2024/QH15, effective July 1, 2024, superseding Law 2010), regulatory intervention is operationalized through Special Control (Kiem soat dac biet, e.g., SCB in 2022) or compulsory transfer (chuyen giao bat buoc 0 dong, as applied historically to CBBank, OceanBank, GPBank, and DongABank). The early-warning target y_{i, t+4} must therefore be reformulated to detect entry into SBV Special Control rather than charter liquidation.\n\n"
-        "3. Four-Tier Institutional Segmentation: Peer normalization must be calculated strictly within four segmented tiers: (1) State-Owned Commercial Banks (SOCBs / Big 4: Vietcombank, BIDV, VietinBank, Agribank) with implicit sovereign backing; (2) Large Private Joint-Stock Commercial Banks (> 300,000 billion VND assets); (3) Small Regional Joint-Stock Banks; and (4) Foreign Bank Branches and Joint-Venture Institutions.\n\n"
-        "4. High-Frequency Telemetry Integration: To prevent viral digital bank runs (akin to SCB in October 2022), the SBV must augment quarterly Call Reports with daily clearing telemetry from NAPAS interbank switches, weekly Open Market Operations (OMO) repo borrowing rates, and bi-weekly credit quota (room tin dung) utilization metrics.\n\n"
+        "1. Regulatory Accounting Mapping: Commercial banks in Vietnam report under VAS and SBV circulars. Capital adequacy maps to Circular 41/2016/TT-NHNN (Basel II CAR >= 8.0%). Asset quality incorporates Circular 11/2021/TT-NHNN governing 5 debt classification tiers (No nhom 1–5). Internal controls align with Circular 13/2018/TT-NHNN. Liquidity limits enforce Circular 22/2019/TT-NHNN as amended by Circular 08/2020/TT-NHNN (capping short-term funds for medium/long loans at 30%). Debt rescheduling incorporates Circular 02/2023/TT-NHNN and Circular 06/2024/TT-NHNN.\n\n"
+        "2. Event Adjudication (Special Control & 0-VND Compulsory Acquisitions): Commercial bank bankruptcy is avoided due to systemic stability priorities. Under the Law on Credit Institutions 2024 (No. 32/2024/QH15, effective July 1, 2024), regulatory intervention operates through Special Control (Kiem soat dac biet, e.g., SCB in 2022) or compulsory transfer (chuyen giao bat buoc 0 dong, as applied to CBBank, OceanBank, GPBank, DongABank). The target y_{i, t+4} must therefore detect entry into SBV Special Control rather than charter liquidation.\n\n"
+        "3. Four-Tier Institutional Segmentation: Peer normalization must be calculated within four segmented tiers: (1) State-Owned Commercial Banks (SOCBs / Big 4: Vietcombank, BIDV, VietinBank, Agribank); (2) Large Private Joint-Stock Commercial Banks (> 300,000 billion VND assets); (3) Small Regional Joint-Stock Banks; and (4) Foreign Bank Branches and Joint Ventures.\n\n"
+        "4. High-Frequency Telemetry Integration: To detect viral digital runs (akin to SCB in Oct 2022), the SBV must augment quarterly reports with daily clearing telemetry from NAPAS, weekly Open Market Operations (OMO) repos, and bi-weekly credit quota (room tin dung) metrics.\n\n"
         "Explicit Disclaimer: This supervisory architecture is proposed as an academic engineering concept and has not been executed on proprietary SBV data.",
         bold_prefix="Vietnamese Supervisory Adaptation: "
     )
@@ -1180,7 +1208,7 @@ def build_submission_document() -> Path:
     add_heading_2(doc, "Appendix B: Multi-Engine Technical Specifications and Environment Topology")
     add_paragraph(
         doc,
-        "All computational experiments were conducted on a single multi-core workstation. Environment specifications: (1) Processor: AMD Ryzen 7 (8 physical cores, 16 logical hardware execution threads at 3.80 GHz); (2) Memory: 16.0 GB DDR4 physical RAM; (3) Storage: 1.0 TB NVMe PCIe M.2 Solid State Drive; (4) Operating System: Microsoft Windows 11 Enterprise (Build 22631); (5) Python Runtime: CPython 3.11.9 (virtual environment at .venv); (6) Java Runtime: OpenJDK 17.0.12 (HotSpot 64-Bit Server VM); (7) Core Libraries: Polars 1.15.0 (Rayon multithreading), pandas 2.2.3 with PyArrow 18.1.0 backend, PySpark 3.5.3 (Spark Local[*] with 4 GB JVM driver memory), scikit-learn 1.5.2, LightGBM 4.5.0, python-docx 1.2.0, PyMuPDF 2.1.",
+        "All computational experiments were conducted on a single multi-core workstation. Environment specifications: (1) Processor: AMD Ryzen 7 (8 physical cores, 16 logical hardware execution threads at 3.80 GHz); (2) Memory: 16.0 GB DDR4 physical RAM; (3) Storage: 1.0 TB NVMe PCIe M.2 Solid State Drive; (4) Operating System: Microsoft Windows 11 Enterprise (Build 22631); (5) Python Runtime: CPython 3.11.9 (observed research environment); (6) Java Runtime: OpenJDK 17.0.21.1 (HotSpot 64-Bit Server VM); (7) Core Libraries: Polars 2.1.0 (Rayon multithreading), pandas 2.2.3 with PyArrow 12.0.1 backend, PySpark 3.5.3 (Spark Local[*] with 8 shuffle partitions and 4 GB JVM driver memory), scikit-learn 1.9.1, LightGBM 4.7.0, python-docx 1.2.0, PyMuPDF 1.24.",
         bold_prefix="Hardware & Environment Architecture: "
     )
 
@@ -1192,41 +1220,44 @@ def build_submission_document() -> Path:
     )
 
     # Load preprocessor params
-    with open("artifacts/features/preprocessor_dev_params.json", encoding="utf-8") as f:
+    prep_params_path = Path("artifacts/features/preprocessor_dev_params.json")
+    if not prep_params_path.exists():
+        prep_params_path = Path("artifacts/stageB/baseline/feature_params/preprocessor_dev_params.json")
+    with open(prep_params_path, encoding="utf-8") as f:
         prep_params = json.load(f)
 
     app_c_headers = ["Feature", "CAMELS", "Mathematical Formulation", "Dev Median", "Dev Mean", "Dev Std", "Supervisory Rationale"]
     formulas_c = {
         "cap_ratio": ("C", "EQ / ASSET", "Core leverage buffer"),
-        "rbc_tier1": ("C", "RBC1AAJ / RBCRWAJ", "Basel Tier 1 risk-weighted ratio"),
-        "rbc_total": ("C", "RBCRWAJ capital buffer", "Basel Total risk-weighted ratio"),
+        "rbc_tier1": ("C", "RBC1AAJ (reported)", "Basel Tier 1 risk-weighted ratio"),
+        "rbc_total": ("C", "RBCRWAJ (reported)", "Basel Total risk-weighted ratio"),
         "neg_equity_flag": ("C", "(EQ < 0)", "Direct technical insolvency flag"),
         "is_pre_basel": ("C", "(REPDTE < '19900331')", "Regulatory regime structural break"),
         "npl_ratio": ("A", "NCLNLS / LNLSNET", "Non-performing loan burden"),
         "reserve_coverage": ("A", "LNATRES / NCLNLS", "Provision buffer over impaired loans"),
-        "nonperf_asset_ratio": ("A", "(P3+P9+NA) / ASSET", "Comprehensive impaired assets share"),
+        "nonperf_asset_ratio": ("A", "(P3ASSET+P9+NA)/ASSET", "Comprehensive impaired assets share"),
         "ore_ratio": ("A", "ORE / ASSET", "Foreclosed real estate inventory"),
         "re_loan_share": ("A", "LNRE / LNLSGR", "Real estate lending concentration"),
         "ci_loan_share": ("A", "LNCI / LNLSGR", "Commercial & industrial loan share"),
         "nonix_asset_ratio": ("M", "NONIX / ASSET", "Operating expense overhead burden"),
-        "roa": ("E", "(NIMY - NONIX) / ASSET", "Return on assets profitability"),
-        "roe": ("E", "NETINC / EQ", "Return on book equity"),
-        "nimy": ("E", "NIMY", "Net interest margin yield"),
+        "roa": ("E", "ROA (reported)", "Return on assets profitability"),
+        "roe": ("E", "ROE (reported)", "Return on book equity"),
+        "nimy": ("E", "NIMY (reported)", "Net interest margin yield"),
         "roa_lag1": ("E", "roa(t-1Q)", "Preceding quarter profitability"),
         "roa_lag4": ("E", "roa(t-4Q)", "Annual baseline profitability"),
         "roa_diff_qoq": ("E", "roa(t) - roa(t-1Q)", "Quarterly earnings momentum"),
         "roa_std_4q": ("E", "rolling_std(roa, 4Q)", "Earnings stream volatility"),
         "nimy_std_4q": ("E", "rolling_std(nimy, 4Q)", "Interest margin volatility"),
         "liq_asset_ratio": ("L", "(CHBAL + SC) / ASSET", "Liquid assets to total assets"),
-        "liq_dep_ratio": ("L", "(CHBAL + SC) / DEPI", "Liquid reserves to deposit base"),
-        "ldr": ("L", "LNLSNET / DEPI", "Loan-to-deposit structural ratio"),
-        "brokered_dep_ratio": ("L", "BRO / DEPI", "Volatile wholesale funding share"),
-        "log_asset": ("S", "ln(ASSET)", "Institution scale & franchise size"),
-        "asset_growth_qoq": ("S", "ASSET(t)/ASSET(t-1) - 1", "Short-term loan growth momentum"),
-        "asset_growth_yoy": ("S", "ASSET(t)/ASSET(t-4) - 1", "Aggressive annual loan expansion"),
-        "cap_zscore_q": ("S", "(cap - mean_q) / std_q", "Peer-relative capital position"),
-        "roa_zscore_q": ("S", "(roa - mean_q) / std_q", "Peer-relative earnings strength"),
-        "npl_zscore_q": ("S", "(npl - mean_q) / std_q", "Peer-relative credit impairment")
+        "liq_dep_ratio": ("L", "(CHBAL + SC) / DEP", "Liquid reserves to deposit base"),
+        "ldr": ("L", "LNLSNET / DEP", "Loan-to-deposit structural ratio"),
+        "brokered_dep_ratio": ("L", "BRO / DEP", "Volatile wholesale funding share"),
+        "log_asset": ("Size", "ln(ASSET)", "Institution scale & franchise size"),
+        "asset_growth_qoq": ("Growth", "ASSET(t)/ASSET(t-1) - 1", "Short-term balance sheet momentum"),
+        "asset_growth_yoy": ("Growth", "ASSET(t)/ASSET(t-4) - 1", "Annual balance sheet expansion"),
+        "cap_zscore_q": ("Peer", "(cap - mean_q) / std_q", "Peer-relative capital position"),
+        "roa_zscore_q": ("Peer", "(roa - mean_q) / std_q", "Peer-relative earnings strength"),
+        "npl_zscore_q": ("Peer", "(npl - mean_q) / std_q", "Peer-relative credit impairment")
     }
 
     app_c_rows = []
@@ -1254,21 +1285,21 @@ def build_submission_document() -> Path:
     add_heading_2(doc, "Appendix D: Time-Series Expanding Cross-Validation Partition Dates")
     add_paragraph(
         doc,
-        "Expanding CV partitions on Development (1984Q1–2007Q4):\n"
-        "• Fold 1: Training Window 1984Q1–1997Q4 (14 years), Purge Buffer 1998Q1–1998Q4 (4 quarters), Validation Window 1999Q1–2002Q4 (152,958 bank-quarters, 104 failure events).\n"
-        "• Fold 2: Training Window 1984Q1–2001Q4 (18 years), Purge Buffer 2002Q1–2002Q4 (4 quarters), Validation Window 2003Q1–2005Q4 (105,955 bank-quarters, 20 failure events).\n"
-        "• Fold 3: Training Window 1984Q1–2004Q4 (21 years), Purge Buffer 2005Q1–2005Q4 (4 quarters), Validation Window 2006Q1–2007Q4 (67,468 bank-quarters, 55 failure events).\n"
-        "• Held-Out Test: Training Window 1984Q1–2007Q4 (24 years), Quarantine Embargo 2008Q1–2008Q4 (4 quarters), Final Out-of-Time Test Evaluation 2009Q1–2025Q2 (16.5 years: 386,964 bank-quarters, 1,775 failure events, 500 unique failed bank charters).",
+        "Expanding CV partitions on Development (1984Q1–2007Q4) with fold-local feature availability selection:\n"
+        "• Fold 1: Training Window 1984Q1–1997Q4 (14 years; 29 Train-available features, nonperf_asset_ratio excluded), Purge Buffer 1998Q1–1998Q4 (4 quarters), Validation Window 1999Q1–2002Q4 (152,958 bank-quarters, 104 failure events).\n"
+        "• Fold 2: Training Window 1984Q1–2001Q4 (18 years; 30 Train-available features), Purge Buffer 2002Q1–2002Q4 (4 quarters), Validation Window 2003Q1–2005Q4 (105,955 bank-quarters, 20 failure events).\n"
+        "• Fold 3: Training Window 1984Q1–2004Q4 (21 years; 30 Train-available features), Purge Buffer 2005Q1–2005Q4 (4 quarters), Validation Window 2006Q1–2007Q4 (67,468 bank-quarters, 55 failure events).\n"
+        "• Held-Out Test: Training Window 1984Q1–2007Q4 (24 years; 30 Dev-available features), Quarantine Embargo 2008Q1–2008Q4 (4 quarters), Final Out-of-Time Test Evaluation 2009Q1–2025Q2 (16.5 years: 386,964 bank-quarters, 1,775 failure events, 500 unique failed bank charters).",
         bold_prefix="Partition Breakdown: "
     )
 
     add_heading_2(doc, "Appendix E: Machine Learning Hyperparameter Grids and Tuning Protocols")
     add_paragraph(
         doc,
-        "Hyperparameter specifications:\n"
-        "1. Logistic Regression: L2 penalty (Ridge), regularization strength C = 1.0, solver = 'lbfgs', maximum iterations = 1,000, tolerance = 1e-4, fit_intercept = True.\n"
-        "2. LightGBM Classifier: boosting_type = 'gbdt', objective = 'binary', n_estimators = 300, learning_rate = 0.05, num_leaves = 31, max_depth = -1, min_child_samples = 50, subsample = 0.8, colsample_bytree = 0.8, random_state = 42, n_jobs = 16, class_weight = None (loss-informed thresholding applied post-prediction).\n"
-        "3. PySpark MLlib Logistic Regression: regParam = 0.01, elasticNetParam = 0.0 (L2 Ridge), maxIter = 100, tol = 1e-6, threshold = 0.5 (native threshold; probabilities exported and rescored via scikit-learn).",
+        "Hyperparameter specifications (predefined baseline configurations evaluated without automated grid search):\n"
+        "1. Logistic Regression: L2 penalty (Ridge), regularization strength C = 0.5, solver = 'lbfgs', maximum iterations = 500, tolerance = 1e-4, fit_intercept = True, random_state = 42.\n"
+        "2. LightGBM Classifier: boosting_type = 'gbdt', objective = 'binary', n_estimators = 300, learning_rate = 0.03, num_leaves = 31, max_depth = -1, min_child_samples = 100, subsample = 0.8, colsample_bytree = 0.8, subsample_for_bin = 50000, random_state = 42, n_jobs = -1, class_weight = None (loss-informed thresholding applied post-prediction).\n"
+        "3. PySpark MLlib Logistic Regression: maxIter = 25, regParam = 0.01, featuresCol = 'features', labelCol = 'label' (native areaUnderPR = 0.5547; scikit-learn AP = 0.5699).",
         bold_prefix="Hyperparameter Specification: "
     )
 

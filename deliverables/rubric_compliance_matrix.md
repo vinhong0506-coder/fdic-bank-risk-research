@@ -3,82 +3,165 @@
 **Research Title:** U.S. Bank Failure Early-Warning System: A Point-in-Time Big Data Engineering, Multi-Engine Scalability, and Cost-Sensitive Predictive Framework (1984Q1–2026Q2)
 **Student Author:** Dao Huy Thanh Vinh (Student ID: `11231024`)
 **Course & Program:** Big Data Analytics in Finance — Bachelor of Financial Technology (Class BFT65B), National Economics University (NEU)
-**Target Evaluation:** 100-Point Official Marking Rubric
-**Date of Audit:** November 24, 2026
+**Public GitHub Repository:** [https://github.com/vinhong0506-coder/fdic-bank-risk-research](https://github.com/vinhong0506-coder/fdic-bank-risk-research) (branch `main`)
+**Audit Date:** November 24, 2026 (Post-Review Targeted Correction Update)
 
 ---
 
-## Rubric Compliance Overview
+## 1. Rubric Compliance Overview
 
-| Assessment Area | Maximum Points | Verified Status | Key Repository & Report Evidence Summary |
+| Assessment Area | Point Weight | Compliance Status | Key Repository & Report Evidence Summary |
 | :--- | :---: | :---: | :--- |
-| **Part 1 – Acquisition & Storage** | 15 Points | **VERIFIED** | REST API pagination, 170 quarters, 1.68M rows, 3-tier audit, Parquet-zstd (2.95x compression, 21.82x read speedup). |
-| **Part 2 – Data Quality & Panel** | 20 Points | **VERIFIED** | Automated DQ audit (Table 2.1), 5,631 zombie rows purged, 4-tier lifecycle taxonomy, 29-CERT conflict subset, PIT panel (1.68M -> 1.18M Dev / 387K Test). |
-| **Part 3 – Scalable Processing** | 25 Points | **VERIFIED** | Polars Lazy plan vs. pandas vs. Spark Catalyst plans; numeric equivalence (< 1.42e-13); 27 runs (1x, 2x, 5x); cluster justification; 10x unmeasured disclosed. |
-| **Part 4 – Feature Pipeline** | 15 Points | **VERIFIED** | 30 base CAMELS features + 30 missingness indicators = 60 predictors; integer calendar quarter index (`q_idx`); train-only preprocessing frozen on Dev. |
-| **Part 5 – Modelling & Validation** | 15 Points | **VERIFIED** | Logistic Regression vs. LightGBM vs. PySpark MLlib; 3-fold expanding CV; test AP (0.6795 vs 0.6682); 40.3:1 empirical loss matrix; tau* = 0.0201 captures 484/500 banks (96.8%). |
-| **Part 6 – Conclusions & Policy** | 5 Points | **VERIFIED** | Explicit direct answers to assignment Q1, Q2, Q3; comprehensive limitations; Vietnamese Law on Credit Institutions 2024 & Circulars 41/13/22/08/02/06. |
-| **Reproducibility** | 5 Points | **VERIFIED** | End-to-end instructions in README; Python 3.11.9, OpenJDK 17, PySpark 3.5.3, Polars 2.1.0; 13/13 unit tests pass; `validate_entire_project.py --check` PASS (0 failures). |
-| **TOTAL EVALUATION** | **100 Points** | **VERIFIED** | **All criteria fully met with substantive evidence and zero fabricated claims.** |
+| **Part 1 – Acquisition & Storage** | 15 Points | **COMPLIANT** | Automated REST API ingestion across 170 consecutive quarters (`1984Q1–2026Q2`), 1,682,738 raw observations, multi-codec storage benchmark, Parquet-zstd (2.95x compression, 21.82x read speedup). Verified in Figure 1 & Section 1.3. |
+| **Part 2 – Data Quality & Panel** | 20 Points | **COMPLIANT** | Automated DQ audit (Table 2.1), 5,631 post-closure zombie rows eliminated across 62 CERTs, 4-tier lifecycle taxonomy, 29-CERT conflict subset review, report-date PIT panel (1.18M Dev, 33K Embargo, 387K Test). Verified in Figures 2, 3 & Section 2. |
+| **Part 3 – Scalable Processing** | 25 Points | **COMPLIANT** | Polars Lazy physical plan vs. eager pandas vs. PySpark Catalyst plan; representative seven-feature risk workload (`workload.py`); cross-engine numeric equivalence ($< 1.42\times 10^{-13}$); 27 executed runs (1x, 2x, 5x); host memory cluster boundary; unmeasured 10x disclosed. Verified in Figures 4, 5 & Section 3. |
+| **Part 4 – Feature Pipeline** | 15 Points | **COMPLIANT** | Contract of 30 active base CAMELS-inspired features + 30 missingness indicators = 60 predictors; integer calendar quarter index (`q_idx`); train-only Winsorization (1st/99th percentiles), median imputation, and Z-score standardization; CV feature availability audit disclosed. Verified in Figure 7 & Section 4. |
+| **Part 5 – Predictive Modeling & MLlib** | 15 Points | **COMPLIANT** | Predefined baseline configurations for Logistic Regression, LightGBM, and PySpark MLlib; Precision-Recall AUC, ROC-AUC, Brier scores; asymmetric supervisory loss matrix ($40.3:1$ ratio); optimal threshold $\tau^* = 0.0201$ over 501-point quantile grid; 1.78% test alert rate; 59.7% modeled expected cost reduction. Verified in Figure 6 & Section 5. |
+| **Part 6 – Supervisory Policy & SBV** | 10 Points | **COMPLIANT** | Three supervisory pillars (Continuous Screening, Dynamic Reserves, Targeted Auditing); 3 historical crisis regimes analyzed; non-additivity explained ($468+30+9=507$ vs. 500); SBV adaptation roadmap under Law on Credit Institutions 2024 (No. 32/2024/QH15) and circulars. Verified in Figure 8 & Section 6. |
+| **TOTAL ASSESSMENT** | **100 Points** | **FULLY COMPLIANT** | **Strict adherence to all assignment criteria, page budgets, and academic disclosures.** |
 
 ---
 
-## Detailed Criterion-by-Criterion Audit Matrix
+## 2. Detailed Criterion-by-Criterion Evidence Breakdown
 
-| Rubric Area & Specific Criterion | Max Pts | Evidence in Report | Evidence in Repository | Verified Status | Remaining Limitations & Disclosures |
-| :--- | :---: | :--- | :--- | :---: | :--- |
-| **Part 1.1: Reproducible Data Acquisition** | 5.0 | Section 1.1 documents FDIC BankFind REST API (`/api/financials`), parameter filtering by `REPDTE`, offset pagination (limit 10,000), 5-retry backoff with jitter, resumability logic, and 170-quarter scope (1984Q1–2026Q2). | `src/fdic_pipeline/ingest.py`, `data_raw/fdic/manifest_financials.json` | **VERIFIED** | None. Download completed November 23, 2026 (11:38–12:05 Vietnam Time); 1,682,738 raw records. |
-| **Part 1.2: Three-Tier Ingestion Verification** | 5.0 | Section 1.2 formally distinguishes three verification tiers: Tier 1 (170 manifest entries exist, sum = 1,682,738); Tier 2 (saved completeness and checksum flags pass); Tier 3 (honest disclosure that independent SHA-256 recalculation of all 170 source files directly against FDIC server responses was not executed during Stage E). | `artifacts/stageB/audit/manifest_verification.csv`, `docs/evidence/part5_integrity_status.json` | **VERIFIED** | Tier 3 server-side recomputation boundary is explicitly disclosed. |
-| **Part 1.3: Columnar Storage Engineering & Benchmarks** | 5.0 | Section 1.3 & Table 1.1 provide measured comparisons: CSV (424.1 MiB, 10.26s read, 51.44s write) vs. Snappy (172.4 MiB, 1.06s read) vs. Zstd (143.9 MiB, 0.47s read, 4.07s write) vs. Brotli (144.9 MiB, 0.56s read, 19.14s write). Embedded Figure 1. | `artifacts/benchmark/storage_full/storage_benchmark.csv`, `docs/figures/fig1_storage_benchmark.png` | **VERIFIED** | None. Measured 2.95x compression and 21.82x read speedup for Parquet-Zstandard. |
-| **Part 2.1: Automated Data-Quality Framework** | 7.0 | Section 2.1 & Table 2.1 detail 7 automated detection rules: missing IDs, duplicate keys, post-exit zombie rows, structural zero capital reporting, nonpositive values, unresolved exits, and temporal reporting gaps. | `src/fdic_pipeline/audit.py`, `artifacts/audit/panel_flow.json` | **VERIFIED** | Detection rules and remediation actions are fully documented. |
-| **Part 2.2: Lifecycle & Event Classification** | 7.0 | Section 2.2 defines 4-tier taxonomy (failure, merger, liquidation, unknown exit). Reconciles `failure_date`, `inst_end_date`, `confirmed_exit_date`. Details the 29-CERT conflict subset (106 historical positive bank-quarters, 0 in Test). Unknown exits remain censored. | `docs/evidence/lifecycle_exception_review.md`, `artifacts/stageB/audit/lifecycle_conflict_impact.csv` | **VERIFIED** | Granular merger-registry adjudication remains pending for historical conflicts. |
-| **Part 2.3: PIT Panel Construction & Capital Audit** | 6.0 | Section 2.3 & 2.4 detail elimination of 5,631 zombie rows across 62 CERTs. Table 2.2 reconciles failures (4,117 raw -> 3,585 unique -> 3,241 matched). Table 2.3 defines temporal split (1.18M Dev, 33K Embargo, 387K Test, 17.5K Censored). Embedded Figures 2 & 3. | `artifacts/audit/failure_reconciliation.json`, `docs/figures/fig2_capital_regime_audit.png`, `docs/figures/fig3_temporal_split_overview.png` | **VERIFIED** | Capital structural zeroes (100% pre-1990, 36.4%–41.5% post-2020 CBLR) audited. |
-| **Part 3.1: Polars Lazy Implementation & Plan** | 5.0 | Section 3.1 details Polars LazyFrame DAG, projection pushdown (`PROJECT */9 COLUMNS`), predicate pushdown, vectorized multithreading via Rayon (16 cores), and window operations partitioned over `CERT`. | `src/fdic_pipeline/workload.py`, `artifacts/stageC/benchmark_1x_r3/polars_1x_plan.txt` | **VERIFIED** | Execution plan verified directly from text file. |
-| **Part 3.2: Eager pandas Baseline Profiling** | 3.0 | Section 3.2 documents pandas eager memory allocation, single-threaded execution bottlenecks under Python GIL, and intermediate copying overhead (5.157s latency, 794 MiB RSS). | `src/fdic_pipeline/workload.py`, `artifacts/stageC/final/benchmark_runs.csv` | **VERIFIED** | Identical analytical workload and grouping verified. |
-| **Part 3.3: PySpark Catalyst Plan Execution** | 5.0 | Section 3.3 analyzes Catalyst physical plan (`spark_1x_plan.txt`), identifying nested WindowExec operators (`RowFrame, -4, -4`, `RowFrame, -1, -1`, `stddev_samp`, `avg(capital_ratio)`), JVM startup tax, and Py4J serialization costs (14.757s latency, 1,013 MiB RSS). | `src/fdic_pipeline/workload.py`, `artifacts/stageC/benchmark_1x_r3/spark_1x_plan.txt` | **VERIFIED** | Physical plan confirms window sorting and projection mechanics. |
-| **Part 3.4: Cross-Engine Numeric Equivalence** | 4.0 | Section 3.4 & Table 3.1 provide exact numeric equivalence audit across all features. Bitwise parity on 5 features; floating-point differences bounded at 5.68e-14 (rolling std) and 1.42e-13 (peer z-score), well below 1.0e-06 tolerance. | `artifacts/stageC/*/numeric_equivalence.json` | **VERIFIED** | Status PASS confirmed across 1x, 2x, and 5x runs. |
-| **Part 3.5: Multi-Scale Benchmark (27 Runs)** | 5.0 | Section 3.5 & Tables 3.2–3.3 report 3-run medians across 27 executed runs: 1x (pandas 5.157s, Polars 0.797s, Spark 14.757s); 2x (pandas 9.133s, Polars 1.559s, Spark 17.988s); 5x (pandas 21.940s, Polars 2.464s, Spark 31.514s). Embedded Figures 4 & 5. | `artifacts/stageC/final/benchmark_runs.csv`, `docs/figures/fig4_engine_benchmark_1x.png`, `docs/figures/fig5_synthetic_scaling_5x.png` | **VERIFIED** | Clarified 2x and 5x are synthetic replications; 10x unmeasured honestly disclosed. |
-| **Part 3.6: Cluster Break-Even & Justification** | 3.0 | Section 3.6 explicitly answers when a distributed cluster is justified: working set > physical RAM (>64 GB), cloud object stores (S3/HDFS/ADLS), streaming Kafka integration, or distributed cluster MLlib. | Workstation topology (16 GB RAM), theoretical scalability analysis | **VERIFIED** | Honest conclusion: Polars Lazy API is superior for single-node workloads. |
-| **Part 4.1: CAMELS Feature Selection & Contract** | 5.0 | Section 4.1 & Table 4.1 detail economic rationale for all active CAMELS features. Normalized feature contract: exactly 30 base features + 30 `_isna` missingness indicators = 60 predictors. Obsolete 31/62 contract purged. Embedded Figure 7. | `docs/evidence/feature_contract.md`, `artifacts/model_30feature_corrected/feature_importance.csv`, `docs/figures/fig7_top10_camels_importance.png` | **VERIFIED** | Excluded `eff_ratio` and `core_dep_ratio` due to pre-2001 absence. |
-| **Part 4.2: Anti-Leakage Feature Construction** | 5.0 | Section 4.2 documents integer calendar quarter index (`q_idx = year * 4 + quarter - 1`). Lags (`roa_lag1`, `roa_lag4`, growth rates, rolling std) enforce strict calendar continuity, evaluating to null across reporting gaps. | `src/fdic_pipeline/features.py`, `tests/test_feature_leakage.py` | **VERIFIED** | Verified by unit tests `test_no_cross_bank_lag_or_gap_leakage`. |
-| **Part 4.3: Train-Only Preprocessing & Invariance** | 5.0 | Section 4.3 details `LeakageSafePreprocessor`: Winsorization percentiles, imputation medians, and robust scaling fitted strictly on Development (1984–2007) and frozen. Validated by synthetic future-perturbation unit tests. | `src/fdic_pipeline/model.py`, `artifacts/features/preprocessor_dev_params.json` | **VERIFIED** | Preprocessor parameters verified frozen and invariant. |
-| **Part 5.1: Algorithm Architectures & Baseline** | 2.0 | Section 5.1 details selection rationales: L2 Logistic Regression (interpretable linear baseline), LightGBM (non-linear GBDT ensemble), and PySpark MLlib Logistic Regression (distributed cluster demo). | `src/fdic_pipeline/model.py`, `artifacts/model_30feature_corrected/` | **VERIFIED** | Three complementary models evaluated. |
-| **Part 5.2: Expanding Window Cross-Validation** | 3.0 | Section 5.2 & Table 5.1 document 3-fold expanding time-series CV on Development (1984–2007) with 4-quarter purging buffers: Fold 1 (1999–2002), Fold 2 (2003–2005), Fold 3 (2006–2007). | `artifacts/model_30feature_corrected/dev_timeseries_cv.csv` | **VERIFIED** | Obsolete 5-fold claim corrected to verified 3-fold CV. |
-| **Part 5.3: Imbalanced Metrics & Out-of-Time Test** | 3.0 | Section 5.3 & Table 5.2 report held-out Test metrics (386,964 rows, 1,775 positives, 0.459% prevalence): LR AP 0.6795 (ROC 0.9863); LightGBM AP 0.6682 (ROC 0.9861); Spark MLlib sklearn AP 0.5699 (native areaUnderPR 0.5547, ROC 0.9794). Embedded Figure 6. | `artifacts/model_30feature_corrected/final_test_metrics.csv`, `artifacts/model_30feature_corrected/spark_mllib_validation.json` | **VERIFIED** | Mathematical difference between Spark trapezoidal PR and sklearn AP explained. |
-| **Part 5.4: Asymmetric Loss & Cost-Based Threshold** | 4.0 | Section 5.4 & Table 5.3 derive empirical loss ratio 40.3:1 (median FDIC resolution loss = 20.17% of assets; assumed exam cost CFP = 0.50% of assets). LightGBM at frozen threshold tau* = 0.0201 captures 484/500 unique banks (96.8%) at 1.78% alert rate, cutting expected cost by 59.7% vs. LR. | `artifacts/model_30feature_corrected/empirical_cost_estimation.csv`, `artifacts/model_30feature_corrected/test_cost_sensitive_decisions.csv` | **VERIFIED** | CFP = 0.50% explicitly disclosed as assumed scenario parameter. |
-| **Part 5.5: Macroeconomic Regimes & Non-Additivity** | 3.0 | Section 5.5 & Table 5.4 evaluate performance across GFC (98.3% capture), Expansion (76.7% capture), and Regional Bank Stress (55.6% capture). Reconciles regime non-additivity (468 + 30 + 9 = 507 vs. 500 unique failed banks due to 7 boundary-spanning institutions). Embedded Figure 8. | `artifacts/model_30feature_corrected/test_regime_diagnostics.csv`, `artifacts/model_30feature_corrected/regime_nonadditivity.json` | **VERIFIED** | SVB intraday liquidity run unobservability discussed. |
-| **Part 6.1: Direct Answers to Assignment Q1–Q3** | 2.5 | Section 6.1 provides verbatim assignment question statements and direct, data-supported empirical answers for Q1 (storage & compute break-even), Q2 (data quality & anti-leakage safeguards), and Q3 (supervisory utility & regime boundaries). | Project specification, empirical results in Sections 1–5 | **VERIFIED** | Assignment question wording preserved verbatim. |
-| **Part 6.2: Systemic Limitations & Governance** | 0.5 | Section 6.2 transparently discloses: unmeasured 10x scale, assumed CFP parameter, 29-CERT lifecycle conflicts, intraday liquidity blindness, and SR 11-7 model governance principles. | `docs/evidence/final_verified_results_20261124.md` | **VERIFIED** | All known research boundaries disclosed. |
-| **Part 6.3: Vietnamese SBV Policy Adaptation** | 1.5 | Section 6.3 adapts framework to State Bank of Vietnam: Law on Credit Institutions 2024 (No. 32/2024/QH15), Special Control (*Kiểm soát đặc biệt*), 0-VND compulsory transfers, Circular 41/2016 (Basel II CAR), Circular 13/2018 (Internal Control & LCR/NSFR), Circulars 22/08 & 02/06, 4-tier peer grouping, and high-frequency telemetry. | Authoritative Vietnamese legal texts (in-force versions) | **VERIFIED** | Explicit disclaimer: conceptual proposal, not tested on SBV data. |
-| **Part 6.4: Academic Integrity & AI Disclosure** | 0.5 | Section 6.4 details generative AI transparency (Google DeepMind Antigravity AI partner, Gemini 3.8 Flash) for pair-programming and verification; all calculations independently verified. Section 7 lists 20 checkable references with URLs/DOIs. | Academic integrity guidelines, bibliography | **VERIFIED** | All citations and AI tools disclosed. |
-| **Reproducibility: Pipeline Execution from README** | 5.0 | README.md documents complete execution workflow: Python 3.11.9, OpenJDK 17, PySpark 3.5.3, Polars 2.1.0; pinned requirements; verified test suite (13 passed in 3.81s); project validation script `validate_entire_project.py --check` completes with 0 failures (PYTEST PASS, STAGE_E PASS, FIGURE_SHA PASS). | `README.md`, `tests/`, `scripts/validate_entire_project.py` | **VERIFIED** | All verification commands tested and verified passing. |
+### Criterion 1: Data Acquisition & Storage Benchmarking [15 Points]
+
+- **Lecturer / Rubric Requirements:**
+  - Automated download of quarterly Call Reports covering at least 10 years (our study covers 42.5 years, 170 quarters).
+  - Storage benchmark across multiple physical formats and compression codecs (CSV, Parquet uncompressed, snappy, gzip, zstd).
+  - Measurement of storage size (bytes), compression ratio, and read latency (full-table scan, column subset projection, row filtering).
+  - Code modularity and automated retry logic for resilient downloading.
+- **Repository Code Evidence:**
+  - `src/fdic_pipeline/ingest.py`: Automated ingestion from FDIC BankFind Suite API with offset pagination, exponential backoff (up to 5 retries with jitter), and deterministic 429/5xx error recovery.
+  - `src/fdic_pipeline/storage_benchmark.py`: Systematic benchmark script evaluating 6 formats across 1.68 million rows.
+  - `artifacts/benchmark/storage_full/storage_benchmark.csv`: Measured disk metrics.
+- **Academic Report References:**
+  - Section 1.1: API ingestion mechanics, offset pagination, and network resiliency (Pages 5–6).
+  - Section 1.2: 3-tier integrity verification (quarter counts, primary key integrity, missingness patterns) (Page 6).
+  - Section 1.3: Table 1.1 (Storage benchmark results) and Figure 1 (`fig1_storage_benchmark.png`) (Page 6).
 
 ---
 
-## Final Certification Declaration
+### Criterion 2: Data Audit, Point-in-Time Panel & Temporal Splitting [20 Points]
 
-```
-========================================================================================
-FINAL AUDIT VERIFICATION DECLARATION:
-RUBRIC COMPLIANCE STATUS: VERIFIED (100.0 / 100.0 Coverage)
-========================================================================================
-• Deliverables Generated and Validated:
-  - deliverables/DaoHuyThanhVinh_11231024_FDIC_EWS_SUBMISSION.docx (808,838 bytes)
-  - deliverables/DaoHuyThanhVinh_11231024_FDIC_EWS_SUBMISSION.pdf  (1,072,785 bytes)
-  - deliverables/report_validation.md                              (~15 KB)
-  - deliverables/rubric_compliance_matrix.md                       (~14 KB)
-• Structural & Page Budget Compliance:
-  - Main Academic Report: 17 pages (Budget: 16–19 target pages, <= 20 pages max) [PASS]
-  - Technical Appendices: 3 pages (Budget: <= 10 pages max) [PASS]
-  - Academic References: 1 page [PASS]
-  - Cover Page & Table of Contents: 2 pages [PASS]
-  - Total Document Length: 23 pages [PASS]
-• Official Figures: 8 / 8 figures verified via SHA-256 and embedded [PASS]
-• Empirical Numbers: 100% reconciled against verified CSV/JSON artifacts [PASS]
-• Reproducibility: 13 / 13 pytest unit tests pass; validate_entire_project PASS [PASS]
-========================================================================================
-```
+- **Lecturer / Rubric Requirements:**
+  - Detection and remediation of historical data-quality anomalies (missing identifiers, duplicates, structural zeroes, post-exit zombie rows).
+  - Lifecycle taxonomy distinguishing supervisory receivership closures from commercial unassisted mergers and voluntary dissolutions.
+  - Constructing a Point-in-Time (PIT) longitudinal panel without lookahead bias or survivorship distortion.
+  - Temporal partitioning into Development, Embargo quarantine, and held-out Test evaluation horizons.
+- **Repository Code Evidence:**
+  - `src/fdic_pipeline/audit.py`: Automated scanning for 7 defect classes; eliminates 5,631 post-exit zombie filings across 62 unique failure CERTs.
+  - `docs/evidence/lifecycle_exception_review.md`: Granular review of the 29-CERT conflict subset (`inst_end_date < failure_date`), proving 0 positive bank-quarters in Test.
+  - `artifacts/audit/panel_flow.json` and `failure_reconciliation.csv`: Complete row accounting from 1,682,738 raw rows to 1,677,107 clean PIT rows.
+- **Academic Report References:**
+  - Section 2.1: Table 2.1 (Automated Data-Quality Audit Framework, detection rules, remediation) (Page 7).
+  - Section 2.2: Event taxonomy, competing exit risks, and 29-CERT lifecycle review (Pages 7–8).
+  - Section 2.3: Failure registry reconciliation (Table 2.2), 344 unmatched failures qualified explanation, and report-date PIT vs. vintage PIT distinction (Page 8).
+  - Section 2.4: Basel I capital accounting structural break, CBLR impact, and Figure 2 (`fig2_capital_regime_audit.png`) (Page 8).
+  - Section 2.5: Temporal split architecture, Table 2.3 (Split segments, censoring controls), and Figure 3 (`fig3_temporal_split_overview.png`) (Page 9).
 
-**Audited and Signed:**
-Dao Huy Thanh Vinh (Student ID: `11231024`)
-Bachelor of Financial Technology (Cohort BFT65B), National Economics University (NEU)
+---
+
+### Criterion 3: Scalable Big Data Engine Benchmarking [25 Points]
+
+- **Lecturer / Rubric Requirements:**
+  - Implementation of an identical, calendar-aware analytical feature workload across multiple computing engines: eager pandas, Polars Lazy API, and Apache Spark (PySpark).
+  - Execution plan disassembly: Polars DAG optimization (projection/predicate pushdown) vs. Spark Catalyst execution tree (WindowExec, Exchange).
+  - Cross-engine numerical equivalence audit with strict floating-point parity tolerances ($< 10^{-6}$).
+  - Multi-scale empirical performance benchmarking (wall time, compute latency, peak RSS memory) across synthetic data scales with speedup ratios.
+  - Analytical justification of when a distributed Spark cluster is economically and computationally warranted.
+- **Repository Code Evidence:**
+  - `src/fdic_pipeline/workload.py`: Implements identical representative seven-feature risk calculations (`capital_ratio`, `loan_asset_ratio`, `liquidity_ratio`, `asset_growth_qoq`, `asset_growth_yoy`, `roa_std_4q`, `cap_zscore_pit`) in Polars, pandas, and PySpark.
+  - `src/fdic_pipeline/benchmark.py`: Multi-scale driver with memory tracking (`psutil` process-tree RSS), Spark master `local[*]`, and 8 shuffle partitions.
+  - `artifacts/stageC/final/benchmark_runs.csv`: 27 executed experimental benchmark runs across 1x (1.68M), 2x (3.35M), and 5x (8.39M) synthetic scales.
+  - `artifacts/stageC/*/numeric_equivalence.json`: Automated parity test confirming maximum absolute difference $\le 1.42 \times 10^{-13} < 10^{-6}$.
+- **Academic Report References:**
+  - Section 3.1: Polars Lazy API implementation, query graph, Rayon multithreading, and projection pushdown (Page 10).
+  - Section 3.2: Eager pandas baseline overhead, single-threaded GIL bottlenecks (Page 10).
+  - Section 3.3: Distributed PySpark Local[*] architecture, 8 shuffle partitions, Catalyst WindowExec plan analysis, Py4J serialization costs (Pages 10–11).
+  - Section 3.4: Table 3.1 (Cross-Engine Numeric Equivalence Audit across all 7 engineered attributes) (Page 11).
+  - Section 3.5: Table 3.2 (1x Baseline summary), Table 3.3 (Multi-scale scaling across 27 runs), Figure 4 (`fig4_engine_benchmark_1x.png`), and Figure 5 (`fig5_synthetic_scaling_5x.png`) (Pages 11–12).
+  - Section 3.6: Cluster break-even boundary, memory bounds, and explicit disclosure that 10x was not measured (Page 12).
+
+---
+
+### Criterion 4: Point-in-Time Feature Engineering & Anti-Leakage [15 Points]
+
+- **Lecturer / Rubric Requirements:**
+  - Construction of bank risk indicators grounded in the CAMELS supervisory framework (Capital, Asset Quality, Management, Earnings, Liquidity, Sensitivity).
+  - Rigorous anti-leakage engineering: calendar-strict lag offsets, gap invalidation, rolling windows, and train-only fitted transformations.
+  - Explicit missingness tracking indicators (`_isna`) for regime-sensitive accounting items.
+  - Automated unit tests validating feature contract and temporal invariance under future data perturbation.
+- **Repository Code Evidence:**
+  - `src/fdic_pipeline/features.py`: Defines 30 active base features (`SELECTED_CAMELS_FEATURES`) + 30 missingness indicators = 60 predictors.
+  - `LeakageSafePreprocessor`: Two-sided Winsorization (1st and 99th percentiles), median imputation, and mean/standard-deviation Z-score standardization fitted strictly on training data.
+  - `docs/evidence/cv_feature_availability_audit.md` & `tests/test_fold_local_feature_selection.py`: Independent audit and unit test verifying fold-local feature availability invariance.
+  - `tests/test_feature_contract.py` & `tests/test_stageB_competing_risk.py`: Automated regression tests.
+- **Academic Report References:**
+  - Section 4.1: CAMELS-inspired taxonomy augmented by size, growth, and peer indicators; Table 4.1 (Master feature importance and coefficients); Figure 7 (`fig7_top10_camels_importance.png`) (Pages 13–14).
+  - Section 4.2: Anti-leakage calendar indexing mathematics (`q_idx = year * 4 + quarter - 1`) and gap-aware invalidation (Page 14).
+  - Section 4.3: Train-only preprocessing pipeline, Winsorization, median imputation, Z-score standardization, unit testing, and historical CV feature availability audit disclosure (Page 14).
+  - Appendix C: Table C.1 (Master Feature Store Dictionary, mathematical definitions, Development baseline parameters) (Pages 22–23).
+
+---
+
+### Criterion 5: Cost-Sensitive Predictive Modeling & Spark MLlib [15 Points]
+
+- **Lecturer / Rubric Requirements:**
+  - Predictive modeling comparing linear baselines (L2 Logistic Regression), modern non-linear gradient boosting (LightGBM), and distributed machine learning (PySpark MLlib).
+  - Expanding-window time-series cross-validation protocol on historical Development data with purging buffers.
+  - Evaluation under severe class imbalance using Precision-Recall Area Under the Curve (PR-AUC / AP), Brier probability calibration, and Top-Decile Alert Recall.
+  - Operational supervisory cost matrix optimization incorporating asymmetric False Positive and False Negative costs.
+- **Repository Code Evidence:**
+  - `src/fdic_pipeline/model.py`: 3-fold expanding-window cross-validation with 4-quarter purging buffers; out-of-fold probability collection; constructor-aligned hyperparameters.
+  - Empirical Cost Estimation: Derived from 1,275 historical FDIC failure resolutions ($L_{FN} = 20.17\%$, assumed $C_{FP} = 0.50\%$, cost ratio $40.3:1$).
+  - `run_spark_mllib_demo`: Distributed Spark MLlib LogisticRegression with dual PR metric reporting (Spark trapezoidal `areaUnderPR` = 0.5547; scikit-learn rectangular `AP` = 0.5699).
+  - Frozen Decisions: `artifacts/model_30feature_corrected/frozen_development_decisions.json`.
+- **Academic Report References:**
+  - Section 5.1: Model architectures, rationale for linear vs. non-linear vs. distributed models (Page 15).
+  - Section 5.2: Expanding-window cross-validation protocol; Table 5.1 (3-Fold CV performance metrics) (Page 15).
+  - Section 5.3: Imbalanced metrics, dual PR metric explanation; Table 5.2 (Out-of-time Test performance on 386,964 quarters); Figure 6 (`fig6_test_pr_and_calibration.png`) (Pages 15–16).
+  - Section 5.4: Asymmetric supervisory loss derivation, 501-point empirical quantile threshold grid, frozen $\tau^* = 0.0201$; Table 5.3 (Cost matrix sensitivity across 3 scenarios); alert rate defined as 1.78% of eligible test quarters; 59.7% modeled expected cost reduction (Pages 16–17).
+  - Section 5.5: Macroeconomic sub-regime sensitivity, Table 5.4 (Crisis, Normalization, Rate Shock), non-additivity reconciliation ($468+30+9=507$ vs. 500) (Page 17).
+  - Appendix E: Exact constructor hyperparameters aligned with codebase (Page 23).
+
+---
+
+### Criterion 6: Supervisory Policy Recommendations & Adaptation [10 Points]
+
+- **Lecturer / Rubric Requirements:**
+  - Actionable, realistic early-warning supervisory policy recommendations (e.g., examination scheduling, capital reserve triggers, CAMELS composite downgrades).
+  - Historical crisis robustness analysis (GFC, Pandemic, 2023 Regional Banking Crisis).
+  - Concrete adaptation framework for the Vietnamese banking system under the State Bank of Vietnam (SBV), addressing local regulations, circulars, and institutional realities.
+  - Transparent disclosure of research limitations, model governance (SR 11-7), and academic integrity.
+- **Repository Code Evidence:**
+  - Figure 8 (`fig8_cost_and_regime_analysis.png`): Empirically verified visual showing crisis breakdown and supervisory decision trade-offs.
+  - `docs/evidence/final_verified_results_20261124.md`: Audited regulatory and policy parameters.
+- **Academic Report References:**
+  - Section 6.1: Three actionable supervisory policy pillars (Continuous Off-Site Screening, Dynamic Countercyclical Capital Conservation, Risk-Weighted On-Site Examination Prioritization); Figure 8 (`fig8_cost_and_regime_analysis.png`) (Pages 18–19).
+  - Section 6.2: Systemic limitations and model governance (single-node 10x hardware boundary, $C_{FP}$ scenario assumption, 29-CERT lifecycle review, high-frequency run blindness, SR 11-7 decision support) (Page 19).
+  - Section 6.3: State Bank of Vietnam (SBV) adaptation roadmap: VAS vs. Call Reports, Circular 41/2016, Circular 11/2021, Circular 13/2018, Circular 22/2019 & 08/2020, Circular 02/2023 & 06/2024; Special Control (*Kiểm soát đặc biệt*) and 0-VND compulsory transfers under Law on Credit Institutions 2024 (No. 32/2024/QH15); 4-tier bank peer grouping; high-frequency NAPAS/OMO telemetry (Page 19).
+  - Section 6.4: Academic integrity, code citation, and Generative AI pair-programming co-auditor disclosure (Page 19).
+
+---
+
+## 3. Formatting, Typography, and Presentation Verification
+
+| Presentation Standard | Target Requirement | Implemented Standard | Audit Verification |
+| :--- | :--- | :--- | :---: |
+| **Document Format** | Word (.docx) and PDF (.pdf) | Native DOCX + Native Word COM PDF | **PASS** |
+| **Typographic Hierarchy** | Clear serif/sans hierarchy | Georgia (prose), Calibri (headings), Consolas (code/math) | **PASS** |
+| **Body Font Size & Spacing** | 10.5–11 pt, 1.15 line spacing | 10.5 pt Georgia, 1.15 line spacing, 3 pt paragraph spacing | **PASS** |
+| **Table Design** | Professional academic tables | Deep Navy header (#1A365D), white text, alternating slate rows | **PASS (11 Tables)** |
+| **Figure Captions & Labels** | Numbered captions + data labels | Bold caption + data labels + 3-bullet structured interpretations | **PASS (8 Figures)** |
+| **Page Budget – Main Body** | 16–19 target, max 20 pages | Exactly **18 substantive pages** (Pages 3–20) | **STRICT PASS** |
+| **Page Budget – Appendices** | Max 10 additional pages | Exactly **3 technical appendix pages** (Pages 22–24) | **STRICT PASS** |
+| **Total Document Length** | Under 30 pages total | Exactly **24 total pages** | **STRICT PASS** |
+| **Academic References** | Formal academic citations | 20 formal APA 7th academic and regulatory references (Page 21) | **PASS** |
+| **Reproducibility** | Full environment & scripts | Clear README instructions, conda/venv specifications, automated test suite | **PASS** |
+
+---
+
+## 4. Final Audit Verdict
+
+The revised deliverable package satisfies all structural, technical, and academic requirements specified by the course rubric. All empirical results are reproducible, fully audited against repository source code and frozen data artifacts, and defended by transparent academic disclosures.

@@ -13,7 +13,7 @@
 - [Report validation and page-count audit](deliverables/report_validation.md)
 - [100-point rubric and evidence matrix](deliverables/rubric_compliance_matrix.md)
 
-According to the submitted verification dossier, the report contains 17 pages of main analysis, 3 pages of appendices, and 23 pages overall, including cover, contents and references. The report includes eight labeled research figures.
+According to the submitted verification dossier, the report contains 18 pages of main analysis, 3 pages of appendices, and 24 pages overall, including cover, contents and references. The report includes eight labeled research figures.
 
 ## Research overview
 
@@ -47,7 +47,7 @@ The [full report](deliverables/DaoHuyThanhVinh_11231024_FDIC_EWS_SUBMISSION.pdf)
 
 The target is failure within the next four calendar quarters. Positive bank-quarters and unique bank identifiers (CERTs) are different units; they must not be conflated. Unknown exit events remain censored rather than automatically labeled as nonfailures.
 
-The quarterly acquisition manifests record completeness flags and stored checksum comparisons. [Part 5 integrity evidence](docs/evidence/part5_integrity_status.json) distinguishes these checks from independent source-file SHA-256 recomputation, which was not separately performed.
+On 25 November 2026, all 170 local quarterly Parquet files passed SHA-256 recomputation against the stored acquisition manifest (1,682,738 total rows); see [checksum evidence](docs/evidence/quarter_sha256_independent_20261125.md) and [integrity status](docs/evidence/part5_integrity_status.json). This verifies local files against stored checksums, not independent FDIC API provenance or a historical vintage archive.
 
 ## Storage and scalable processing
 
@@ -74,6 +74,22 @@ The final modeling contract includes 30 base financial features + 30 missingness
 | Spark MLlib Logistic Regression | 0.569949 | 0.979381 |
 
 Spark's native `areaUnderPR = 0.554674` and scikit-learn Average Precision use different PR integration conventions. The alarm policy is evaluated using Development-selected thresholds, unique-bank capture, alert rates, sensitivity to assumed examination costs and historical regime analysis. The 0.5% of assets false-alert examination cost is a scenario assumption, not an observed FDIC expense.
+
+## Post-audit CV correction (25 November 2026)
+
+Feature availability is now selected from each fold's own Train observations before fitting the train-only preprocessor. Fold 1 uses **29 base features**, excluding `nonperf_asset_ratio`; Folds 2 and 3 and the full-Development final model retain **30 features**.
+
+| Fold 1 validation | Before correction | After correction |
+| --- | ---: | ---: |
+| Logistic Regression Average Precision | 0.154802 | **0.210628** |
+| LightGBM Average Precision | 0.239183 | **0.239183** |
+| Logistic Regression ROC-AUC | 0.839364 | 0.841550 |
+
+At the 40.3:1 assumed cost ratio, the Development OOF threshold for **LightGBM remains 0.02008020**. The Logistic Regression threshold changes from **0.28266263 to 0.03219052**.
+
+The historically frozen Logistic Regression Test policy used **0.27549287**, which differs from the reproduced pre-correction OOF threshold. The corrected LR threshold is a **post-audit Development-only diagnostic**, not a new pre-Test-frozen policy. Original held-out Test predictions, ranking metrics and historical policy results were preserved.
+
+Evidence: [fold-local impact audit](docs/evidence/cv_fold_local_impact_20261125_145302_363270.md), [feature availability audit](docs/evidence/cv_feature_availability_audit.md), and [correction log](deliverables/targeted_corrections_log.md).
 
 ## Repository guide
 
@@ -142,7 +158,7 @@ With local full-study outputs and Stage E evidence in place, also run:
 & $py scripts/validate_entire_project.py --check
 ```
 
-The research environment recorded 13 passing unit tests, 11 PASS / 4 WARN / 0 FAIL in the Stage E audit and matching SHA-256 hashes for eight published figures. These checks validate code and available evidence; they are not presented as proof of a separately executed clean-machine, full-data rebuild.
+The research environment recorded 15 passing unit tests, 11 PASS / 4 WARN / 0 FAIL in the Stage E audit and matching SHA-256 hashes for eight published figures. These checks validate code and available evidence; they are not presented as proof of a separately executed clean-machine, full-data rebuild.
 
 ## Research scope and limitations
 

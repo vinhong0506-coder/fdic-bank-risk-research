@@ -18,6 +18,14 @@ from fdic_pipeline.features import build_raw_camels_features, LeakageSafePreproc
 
 BASE_FEATURES = list(SELECTED_CAMELS_FEATURES)
 
+def select_fold_available_features(train_df: pd.DataFrame, candidates: list[str]) -> list[str]:
+    """Choose feature availability strictly from this fold's training rows."""
+    chosen = [c for c in candidates if c in train_df.columns and train_df[c].notna().any()]
+    if not chosen:
+        raise ValueError("No feature with observed values in the fold's Train")
+    return chosen
+
+
 
 def estimate_empirical_cost_ratio(raw_dir: Path, out_dir: Path) -> float:
     fails = pl.read_parquet(raw_dir / "failures.parquet")
@@ -182,6 +190,7 @@ def run_modeling_pipeline(pit_path: Path, raw_dir: Path, out_dir: Path) -> None:
 
     cv_rows = []
     oof_preds = []
+    cv_fold_features = {}
 
     for fold_name, tr_end, val_start, val_end in folds:
         # Purged CV: four FULL calendar quarters between last train observation and val start.
@@ -189,10 +198,13 @@ def run_modeling_pipeline(pit_path: Path, raw_dir: Path, out_dir: Path) -> None:
         tr = dev_df[dev_df["REPDTE"] <= tr_end]
         va = dev_df[(dev_df["REPDTE"] >= val_start) & (dev_df["REPDTE"] <= val_end)].copy()
 
-        prep = LeakageSafePreprocessor(feat_cols).fit(tr[feat_cols])
-        X_tr = prep.transform(tr[feat_cols])
+        # Fold-local: no future Development/Validation availability may select a feature.
+        fold_feat_cols = select_fold_available_features(tr, BASE_FEATURES)
+        cv_fold_features[fold_name] = fold_feat_cols
+        prep = LeakageSafePreprocessor(fold_feat_cols).fit(tr[fold_feat_cols])
+        X_tr = prep.transform(tr[fold_feat_cols])
         y_tr = tr["target_4q"].astype(int).values
-        X_va = prep.transform(va[feat_cols])
+        X_va = prep.transform(va[fold_feat_cols])
         y_va = va["target_4q"].astype(int).values
 
         lr = LogisticRegression(max_iter=500, C=0.5, random_state=42)
@@ -247,7 +259,9 @@ def run_modeling_pipeline(pit_path: Path, raw_dir: Path, out_dir: Path) -> None:
     import json
     (out_dir / 'frozen_development_decisions.json').write_text(json.dumps({
         'folds':folds, 'thresholds':thresh_map, 'feature_cols':feat_cols,
-        'assumed_exam_cost_asset_ratio':0.005, 'selection_source':'Development OOF only'
+        'assumed_exam_cost_asset_ratio':0.005,
+        'selection_source':'Fold-Train feature selection for CV; full Development for final model',
+        'cv_fold_feature_cols':cv_fold_features
     },indent=2),encoding='utf-8')
     # 2. Fit Frozen Final Models on Full Development -> Evaluate ONCE on Test (2009Q1-2025Q2)
     final_prep = LeakageSafePreprocessor(feat_cols).fit(dev_df[feat_cols])
