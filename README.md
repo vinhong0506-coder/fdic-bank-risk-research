@@ -229,7 +229,9 @@ These constraints are recorded to keep the conclusions **auditable and proportio
 
 The submitted [report](deliverables/DaoHuyThanhVinh_11231024_FDIC_EWS_SUBMISSION.pdf) contains the academic and regulatory reference list. Principal sources and tools include the **FDIC BankFind Suite API**, Parquet, pandas, Polars, Apache Spark, scikit-learn and LightGBM. Consult the original data providers and library documentation for reuse conditions.
 
-ChatGPT and Google Antigravity were used as assistance for code debugging, documentation and report production. **The student author is responsible for the research design, verification of outputs, interpretation, source attribution and the accuracy of the submitted work.**
+The submitted report includes a complete list of academic and regulatory references. Primary data sources and technical tools utilized in this study comprise the FDIC BankFind Suite API, Parquet, pandas, Polars, Apache Spark, scikit-learn, and LightGBM. Please refer to the original data providers and official library documentation for specific licensing and reuse conditions.
+
+The student author independently led the core research process, including problem formulation, solution exploration, workflow design, output verification, scientific interpretation, source attribution, and overall accuracy of the submitted work. OpenAI ChatGPT and Google Antigravity were utilized solely as supplementary tools to assist with code debugging, technical documentation, and report preparation.
 
 ---
 
